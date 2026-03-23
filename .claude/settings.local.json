@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(grep -r \"ResolvedCalendarDay\\\\|interface.*ResolvedDay\\\\|interface.*Shift\" c:/Users/semna/Downloads/checkin/frontend/src/api c:/Users/semna/Downloads/checkin/backend/src/modules/schedules --include=*.ts)",
+      "Bash(timeout 8 node -e \"require\\(''./dist/core/server''\\)\")",
+      "Bash(timeout 10 npx ts-node --project tsconfig.json -e \"import\\(''''./src/core/server''''\\)\")"
+    ]
+  }
+}

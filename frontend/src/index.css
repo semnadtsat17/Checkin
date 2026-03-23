@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Sarabun', 'IBM Plex Sans Thai', sans-serif;
+    /* 16px base improves Thai script legibility */
+    font-size: 16px;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    /* Thai script needs generous line-height for descenders */
+    line-height: 1.65;
+  }
+
+  /* Ensure inputs, selects, and buttons inherit the Thai font */
+  input, select, textarea, button {
+    font-family: inherit;
+  }
+
+  /* Prevent iOS font-size auto-zoom on focus */
+  @media screen and (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="month"],
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+}
