@@ -15,14 +15,12 @@ import {
   NO_START_END_SLOTS,
 } from '../../modules/schedule/timeRangeEngine';
 import {
-  apiRangesToAbsolute,
   addDays,
+  normalizeHhmm,
   type TimeRange,
 } from '../../modules/schedule/rangeEngine';
-import {
-  buildBlockedFromResolvedDays,
-} from '../../modules/schedule/resolvedDayAdapter';
-import { sliceRangeByDay } from '../../modules/schedule/sliceRangeByDay';
+import { buildEmployeeBusyTimeline } from '../../modules/scheduling/availabilityEngine';
+import { serializeUiTime, displayUiEndTime } from '../../modules/schedule/timeUiAdapter';
 import type { ResolvedCalendarDay } from '../../api/schedules';
 import { ScheduleCell } from '../../components/schedule/ScheduleCell';
 import { PageSpinner } from '../../components/Spinner';
@@ -190,11 +188,14 @@ function CellBadge({
   cell,
   isPending,
   shifts = [],
+  date,
 }: {
   cell:      ScheduleDay | ScheduleDayDto | null;
   isPending: boolean;
   /** Department shift definitions — used to sort badges by startTime ascending. */
   shifts?:   WorkSchedulePatternShift[];
+  /** Calendar date (YYYY-MM-DD) — enables absolute-time sort order. */
+  date?:     string;
 }) {
   if (!cell) return <span className="text-xs text-gray-200">—</span>;
 
@@ -211,14 +212,16 @@ function CellBadge({
   const codes = getCodes(cell);
   if (codes.length === 0) return <span className="text-xs text-gray-200">—</span>;
 
-  // Sort by working-timeline order:
-  //   sort_value = start_time_in_minutes + (isOvernight ? 1440 : 0)
-  // Overnight shifts logically follow all same-day shifts even when their
-  // clock start_time (e.g. 20:00 or 00:00) would sort them elsewhere.
+  // Sort by absolute start time using normalizeHhmm so cross-midnight shifts
+  // always appear after same-day shifts (e.g. N 20:00→04:00 sorts after D 08:00).
   const shiftMap = new Map(shifts.map((s) => [s.code, s]));
   function sortValue(code: string): number {
     const s = shiftMap.get(code);
     if (!s) return 0;
+    if (date) {
+      return normalizeHhmm(date, s.startTime, s.endTime, 'SHIFT').start.getTime();
+    }
+    // Fallback when date is unknown — heuristic identical to absolute sort.
     const [h, m] = s.startTime.split(':').map(Number);
     return h * 60 + m + (s.isOvernight ? 1440 : 0);
   }
@@ -420,7 +423,7 @@ function ExtraWorkModal({
   const [employeeId,    setEmployeeId]    = useState(initial?.employeeId ?? defaultEmployeeId);
   const [date,          setDate]          = useState(initial?.date       ?? defaultDate);
   const [startTime,     setStartTime]     = useState(initial?.startTime    ?? '');
-  const [endTime,       setEndTime]       = useState(initial?.endTime      ?? '');
+  const [endTime,       setEndTime]       = useState(initial?.endTime ? displayUiEndTime(initial.endTime) : '');
   const [reason,        setReason]        = useState<ExtraWorkReason>(initial?.reason ?? 'ot');
   const [customReason,  setCustomReason]  = useState(initial?.customReason ?? '');
   const [saving,        setSaving]        = useState(false);
@@ -440,70 +443,50 @@ function ExtraWorkModal({
     const uid   = employeeId || initial?.employeeId;
     const month = date ? date.slice(0, 7) : '';   // YYYY-MM from YYYY-MM-DD
     if (!uid || !month) { setResolvedCalendar([]); return; }
+
+    // Fetch boundary days so cross-midnight shifts at the start/end of the
+    // month are included in buildEmployeeBusyTimeline.
+    const [y, m] = month.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const fetchFrom = addDays(`${month}-01`,                                  -1);
+    const fetchTo   = addDays(`${month}-${String(lastDay).padStart(2, '0')}`, +1);
+
     let cancelled = false;
-    scheduleApi.employeeCalendar({ userId: uid, month })
+    scheduleApi.employeeCalendar({ userId: uid, month, from: fetchFrom, to: fetchTo })
       .then((days) => { if (!cancelled) setResolvedCalendar(days); })
       .catch(() => { if (!cancelled) setResolvedCalendar([]); });
     return () => { cancelled = true; };
   }, [employeeId, date, initial?.employeeId]);
 
   /**
-   * Other extra-work entries for the same employee+date, excluding the one
-   * currently being edited (so it doesn't collide with itself).
+   * Employee's complete busy timeline — all shifts + all OT entries (excl. self),
+   * as merged absolute TimeRange[].
+   *
+   * buildEmployeeBusyTimeline:
+   *   • Converts every resolved day's shifts to absolute TimeRanges via normalizeHhmm.
+   *   • Cross-midnight shifts naturally extend into the next calendar day —
+   *     no sliceRangeByDay or prevDay injection needed.
+   *   • OT entries are anchored to their own date; cross-date conflicts are handled
+   *     by the same absolute-overlap math.
+   *
+   * Future leave: add leave ranges inside buildEmployeeBusyTimeline params when ready.
    */
-  const extraWorksForDate = useMemo(
-    () => extraWorks.filter(
-      (ew) =>
-        ew.employeeId === (employeeId || initial?.employeeId) &&
-        ew.date === date &&
-        ew.id !== initial?.id
-    ),
-    [extraWorks, employeeId, date, initial?.employeeId, initial?.id]
+  const busyTimeline = useMemo<TimeRange[]>(
+    () => buildEmployeeBusyTimeline({
+      resolvedDays: resolvedCalendar,
+      extraWorks:   extraWorks.filter(
+        (ew) =>
+          ew.employeeId === (employeeId || initial?.employeeId) &&
+          ew.id !== initial?.id
+      ),
+    }),
+    [resolvedCalendar, extraWorks, employeeId, initial?.employeeId, initial?.id]
   );
 
-  /**
-   * Absolute TimeRange[] fed into the time-range engine.
-   *
-   *   buildBlockedFromResolvedDays: uses the authoritative resolved calendar
-   *     (draft-inclusive) for both the OT date and the previous day.
-   *     Cross-midnight shifts from yesterday are automatically included.
-   *
-   *   apiRangesToAbsolute: converts other same-day OT entries so they also
-   *     block overlapping new/edited entries.
-   *
-   *   Future leave: append leave ranges here with source 'FUTURE_RESERVED'.
-   *   No other change needed.
-   */
-  const blockedTimeRanges = useMemo<TimeRange[]>(() => {
-    const prevDate   = addDays(date, -1);
-    const currentDay = resolvedCalendar.find((d) => d.date === date);
-    const prevDay    = resolvedCalendar.find((d) => d.date === prevDate);
-
-    // Collect all raw blocked ranges for the OT date (working time + other OT).
-    const raw: TimeRange[] = [
-      ...buildBlockedFromResolvedDays(date, currentDay, prevDay),
-      ...apiRangesToAbsolute(
-        date,
-        extraWorksForDate.map((ew) => ({ start: ew.startTime, end: ew.endTime })),
-        'EXTRA_WORK'
-      ),
-      // Future: append leave ranges here with source 'FUTURE_RESERVED'
-    ];
-
-    // Clip every range to the visible calendar day before handing to the engine.
-    // Cross-midnight working-time ranges (e.g. DayN 20:00 → DayN+1 04:00) are
-    // sliced so the engine only sees the portion that falls on `date`:
-    //   Day N view  → [20:00, 24:00)   ← blocks 20:00–23:30 only
-    //   Day N+1 view → [00:00, 04:00)  ← blocks 00:00–03:30 only
-    return raw
-      .map((r) => sliceRangeByDay(r, date))
-      .filter((r): r is TimeRange => r !== null);
-  }, [date, resolvedCalendar, extraWorksForDate]);
-
-  /** Engine instance — recomputed only when date or blocked ranges change. */
+  /** Engine instance — recomputed only when date or busy timeline changes. */
   const engine = useMemo(
-    () => computeAllowedTimeRanges(date, blockedTimeRanges),
-    [date, blockedTimeRanges]
+    () => computeAllowedTimeRanges(date, busyTimeline),
+    [date, busyTimeline]
   );
 
   /** End-slot list for the current startTime — updates on every startTime change. */
@@ -529,6 +512,20 @@ function ExtraWorkModal({
 
   const isEdit = initial !== null;
 
+  /** Pure duration calculator that understands the "24:00" display sentinel. */
+  function otDuration(start: string, end: string): string | null {
+    if (!start || !end) return null;
+    const [sh, sm] = start.split(':').map(Number);
+    const endH     = end === '24:00' ? 24 : Number(end.split(':')[0]);
+    const endM     = end === '24:00' ?  0 : Number(end.split(':')[1]);
+    if ([sh, sm, endH, endM].some(isNaN)) return null;
+    const diff = (endH * 60 + endM) - (sh * 60 + sm);
+    if (diff <= 0) return null;
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    return [h > 0 && `${h} ชม.`, m > 0 && `${m} นาที`].filter(Boolean).join(' ');
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -540,15 +537,17 @@ function ExtraWorkModal({
 
     setSaving(true);
     try {
+      const endNextDay = endTime === '24:00';
+      const apiEndTime = serializeUiTime(endTime);
       if (isEdit) {
         await onSave({
           id: initial.id,
-          date, startTime, endTime, reason,
+          date, startTime, endTime: apiEndTime, endNextDay, reason,
           customReason: reason === 'other' ? customReason.trim() : undefined,
         });
       } else {
         await onSave({
-          employeeId, departmentId, date, startTime, endTime, reason,
+          employeeId, departmentId, date, startTime, endTime: apiEndTime, endNextDay, reason,
           customReason: reason === 'other' ? customReason.trim() : undefined,
         });
       }
@@ -636,6 +635,12 @@ function ExtraWorkModal({
               />
             </div>
           </div>
+          {/* Duration preview */}
+          {otDuration(startTime, endTime) && (
+            <p className="text-xs text-primary-600">
+              ⏱ รวม {otDuration(startTime, endTime)}
+            </p>
+          )}
           {/* Show blocked working-time info from resolved calendar */}
           {(() => {
             const day = resolvedCalendar.find((d) => d.date === date);
@@ -820,6 +825,19 @@ export default function SchedulesPage() {
   const longPressRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** True once long-press threshold is reached on mobile */
   const touchDragRef    = useRef(false);
+
+  // ── Auto-save ───────────────────────────────────────────────────────────────
+  /** Visual status driven by the auto-save effect below. */
+  const [draftSaveStatus, setDraftSaveStatus] =
+    useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
+  /** Debounce timer — cleared on every new mutation or unmount. */
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Always points to the latest `handleSave`.
+   * The timer callback reads this ref so it never captures a stale closure.
+   * Updated by a bare useEffect (no deps) that runs after every render.
+   */
+  const handleSaveRef = useRef<() => Promise<boolean>>(() => Promise.resolve(true));
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -1080,6 +1098,43 @@ export default function SchedulesPage() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [hasPending, showEWModal]);
 
+  // ── Keep handleSaveRef current (no deps — intentional, runs after every render) ──
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { handleSaveRef.current = handleSave; });
+
+  // ── Auto-save: debounce 600 ms after the last cell mutation ──────────────
+  useEffect(() => {
+    if (touchedCells.size === 0) {
+      // Nothing pending — clear any queued timer (e.g. after Cancel or successful save).
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Reset timer on every new mutation (debounce).
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setDraftSaveStatus('pending');
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      autoSaveTimerRef.current = null;
+      setDraftSaveStatus('saving');
+      const ok = await handleSaveRef.current();
+      setDraftSaveStatus(ok ? 'saved' : 'error');
+      if (ok) setTimeout(() => setDraftSaveStatus('idle'), 2500);
+    }, 600);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    };
+  // touchedCells is the only trigger; handleSave is accessed via ref.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [touchedCells]);
+
   // ── Publish schedule — marks all draft records as published ──────────────
 
   async function handlePublish() {
@@ -1190,8 +1245,8 @@ export default function SchedulesPage() {
 
   // ── Save all pending edits ─────────────────────────────────────────────────
 
-  async function handleSave() {
-    if (!hasPending) return;
+  async function handleSave(): Promise<boolean> {
+    if (!hasPending) return true;
     setSaving(true);
     setSaveError('');
     try {
@@ -1230,7 +1285,7 @@ export default function SchedulesPage() {
       if (payload.length === 0) {
         setDraftWeeks(new Map());
         setTouchedCells(new Set());
-        return;
+        return true;
       }
 
       console.log('[SchedulesPage] upsertDays payload', JSON.stringify(payload, null, 2));
@@ -1250,8 +1305,10 @@ export default function SchedulesPage() {
       setTouchedCells(new Set());
       // Refresh publish-status so the Publish button reflects the new saved state.
       await fetchPublishStatus();
+      return true;
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : t('error.generic'));
+      return false;
     } finally {
       setSaving(false);
     }
@@ -1284,31 +1341,68 @@ export default function SchedulesPage() {
             </button>
           )}
 
-          {/* ── Dirty badge — visible whenever unsaved schedule or EW edits exist ── */}
-          {(hasPending || showEWModal) && (
+          {/* ── Auto-save status indicator ── */}
+          {draftSaveStatus === 'pending' && (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              รอบันทึกอัตโนมัติ...
+            </span>
+          )}
+          {draftSaveStatus === 'saving' && (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              กำลังบันทึก...
+            </span>
+          )}
+          {draftSaveStatus === 'saved' && (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-green-600">
+              ✓ บันทึกร่างแล้ว
+            </span>
+          )}
+          {draftSaveStatus === 'error' && (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+              บันทึกไม่สำเร็จ
+            </span>
+          )}
+          {/* EW modal open but no schedule edits — still warn user */}
+          {draftSaveStatus === 'idle' && showEWModal && (
             <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
               <span className="h-2 w-2 rounded-full bg-amber-500" />
-              มีการแก้ไขที่ยังไม่บันทึก
+              กำลังแก้ไข OT...
             </span>
           )}
 
+          {/* Cancel: discard local draft edits before auto-save fires */}
           {hasPending && (
             <button
-              onClick={() => { setDraftWeeks(new Map()); setTouchedCells(new Set()); setSaveError(''); setPublishMsg(null); }}
+              onClick={() => {
+                setDraftWeeks(new Map());
+                setTouchedCells(new Set());
+                setSaveError('');
+                setPublishMsg(null);
+                setDraftSaveStatus('idle');
+              }}
               className="rounded-xl border border-amber-300 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50"
             >
               ยกเลิก ({pendingCount})
             </button>
           )}
-
-          {/* Save — always draft-only; never triggers publish */}
-          <button
-            onClick={handleSave}
-            disabled={!hasPending || saving}
-            className="rounded-xl bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-40"
-          >
-            {saving ? t('common.loading') : 'บันทึก (ฉบับร่าง)'}
-          </button>
+          {/* Retry button shown only on save error */}
+          {draftSaveStatus === 'error' && (
+            <button
+              disabled={saving}
+              onClick={() => {
+                setDraftSaveStatus('saving');
+                handleSave().then((ok) => {
+                  setDraftSaveStatus(ok ? 'saved' : 'error');
+                  if (ok) setTimeout(() => setDraftSaveStatus('idle'), 2500);
+                });
+              }}
+              className="rounded-xl border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-40"
+            >
+              ลองใหม่
+            </button>
+          )}
 
           {/* ── Publish button — three states ── */}
           {deptId && (() => {
@@ -1376,12 +1470,12 @@ export default function SchedulesPage() {
         <input
           type="month"
           value={month}
-          onChange={(e) => { setMonth(e.target.value); setDraftWeeks(new Map()); setTouchedCells(new Set()); setSaveError(''); }}
+          onChange={(e) => { setMonth(e.target.value); setDraftWeeks(new Map()); setTouchedCells(new Set()); setSaveError(''); setDraftSaveStatus('idle'); }}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
         />
         <select
           value={deptId}
-          onChange={(e) => { setDeptId(e.target.value); setDraftWeeks(new Map()); setTouchedCells(new Set()); setSaveError(''); }}
+          onChange={(e) => { setDeptId(e.target.value); setDraftWeeks(new Map()); setTouchedCells(new Set()); setSaveError(''); setDraftSaveStatus('idle'); }}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
         >
           <option value="">— เลือกแผนก —</option>
@@ -1638,7 +1732,7 @@ export default function SchedulesPage() {
                                   <span className="text-xs text-gray-300">-</span>
                                 )
                               ) : (
-                                <CellBadge cell={cell} isPending={isPending} shifts={allDeptShifts} />
+                                <CellBadge cell={cell} isPending={isPending} shifts={allDeptShifts} date={date} />
                               )}
                             </ScheduleCell>
                           );

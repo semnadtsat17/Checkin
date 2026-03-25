@@ -1204,7 +1204,14 @@ export const scheduleService = {
    * Returns [{ start, end }] for WEEKLY_WORKING_TIME working days.
    * Returns one entry per published shift for SHIFT_TIME working days.
    */
-  resolveWorkingTimeRanges(userId: string, date: string): { start: string; end: string }[] {
+  /**
+   * @param preferDraft  When true, a draft ScheduleDayRecord takes priority over
+   *   the published one for the same (userId, date).  Pass true from the
+   *   extra-work service so OT validation reflects the manager's in-progress
+   *   edits rather than the last-published state.  All other callers leave this
+   *   false (default) and receive the existing published-first behaviour.
+   */
+  resolveWorkingTimeRanges(userId: string, date: string, preferDraft = false): { start: string; end: string }[] {
     const employee = employeeStore.findById(userId);
     if (!employee) return [];
 
@@ -1240,10 +1247,13 @@ export const scheduleService = {
     }
 
     if (pattern.type === 'WEEKLY_WORKING_TIME') {
-      // Prefer stored record (historical integrity after transfers)
-      const rec = dayStore.findOne(
-        (d) => d.userId === userId && d.date === date && (d.status ?? 'published') === 'published'
-      );
+      // Prefer stored record (historical integrity after transfers).
+      // When preferDraft=true (OT validation), a draft record wins over the published
+      // one so that managers see consistent results while editing before publishing.
+      const rec = preferDraft
+        ? (dayStore.findOne((d) => d.userId === userId && d.date === date && d.status === 'draft')
+           ?? dayStore.findOne((d) => d.userId === userId && d.date === date && (d.status ?? 'published') === 'published'))
+        : dayStore.findOne((d) => d.userId === userId && d.date === date && (d.status ?? 'published') === 'published');
       if (rec) {
         if (rec.isDayOff) return [];
         if (rec.weeklyStartTime && rec.weeklyEndTime) {
@@ -1260,10 +1270,14 @@ export const scheduleService = {
 
     // ── SHIFT_TIME ────────────────────────────────────────────────────────────
     // OT validation must see draft shifts — a manager who has assigned but not yet
-    // published a shift should have OT blocked against it.
-    const rec = dayStore.findOne(
-      (d) => d.userId === userId && d.date === date
-    );
+    // published a shift should have OT blocked against it; equally, a manager who
+    // has REMOVED a shift in draft should not have that removed shift block OT.
+    // preferDraft=true → explicit draft-first ordering (deterministic).
+    // preferDraft=false → original unfiltered findOne (preserves existing behaviour).
+    const rec = preferDraft
+      ? (dayStore.findOne((d) => d.userId === userId && d.date === date && d.status === 'draft')
+         ?? dayStore.findOne((d) => d.userId === userId && d.date === date && (d.status ?? 'published') === 'published'))
+      : dayStore.findOne((d) => d.userId === userId && d.date === date);
     if (!rec || rec.isDayOff) return [];
 
     const codes = rec.shiftCodes.length > 0

@@ -179,10 +179,12 @@ export const scheduleApi = {
    * Fetch once per (employeeId, month) pair and cache in state.
    * Cache must be invalidated after schedule publish.
    */
-  employeeCalendar(params: { userId: string; month: string }) {
+  employeeCalendar(params: { userId: string; month: string; from?: string; to?: string }) {
     const p = new URLSearchParams();
     p.set('userId', params.userId);
     p.set('month',  params.month);
+    if (params.from) p.set('from', params.from);
+    if (params.to)   p.set('to',   params.to);
     return apiFetch<ResolvedCalendarDay[]>(`/api/schedules/employee-calendar?${p}`);
   },
 

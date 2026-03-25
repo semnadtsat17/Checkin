@@ -42,9 +42,9 @@ export function isForbiddenShiftState(start: string, isOvernight: boolean): bool
  * Assumes start and end are already valid HH:mm strings.
  *
  * Rules:
- *   isOvernight=true  → end must be strictly before start (end < start).
- *   isOvernight=false → end must be strictly after start  (end > start),
- *                       OR end='00:00' with start ≠ '00:00' (midnight sentinel).
+ *   isOvernight=true  → end ≤ start (end < start, or end === start = 24h overnight).
+ *   isOvernight=false → end ≥ start (end > start, or end === start = 24h same-day),
+ *                       OR end='00:00' (midnight sentinel = 24:00 same day).
  */
 export function isValidShiftTime(
   start: string,
@@ -55,9 +55,11 @@ export function isValidShiftTime(
   if (isForbiddenShiftState(start, isOvernight)) return false;
 
   if (isOvernight) {
-    return end < start;                         // end on next day, must precede start
+    // end === start = 24h overnight; end < start = normal cross-midnight
+    return end <= start;
   }
-  return end > start || (end === '00:00' && start !== '00:00');
+  // end === start = 24h same-day; end > start = normal same-day; end='00:00'/'24:00' = midnight sentinel
+  return end >= start || end === '00:00' || end === '24:00';
 }
 
 /**
@@ -76,25 +78,30 @@ export function getAllowedEndSlots(start: string, isOvernight: boolean): SlotSta
   if (isForbiddenShiftState(start, isOvernight)) return [];
 
   if (isOvernight) {
-    // Valid ends: strictly before start in HH:mm space
+    // Valid ends: at or before start in HH:mm space.
+    // Equal (end === start) = 24h overnight shift — normalizeHhmm sees end ≤ start → +24h.
     return ALL_SLOTS_ORDERED.map((slot) => ({
       value:    slot,
-      disabled: slot >= start,
-      reason:   slot >= start ? ('INVALID_ORDER' as const) : undefined,
+      disabled: slot > start,
+      reason:   slot > start ? ('INVALID_ORDER' as const) : undefined,
     }));
   }
 
-  // overnight=false: non-midnight slots first, midnight sentinel at the end
+  // overnight=false: non-midnight slots first, '24:00' sentinel at the end.
+  // Equal (end === start) = 24h same-day shift — normalizeHhmm sees end≤start → +24h.
+  // '24:00' is display-only; serializeUiTime converts it → '00:00' before API calls.
   const nonMidnight = ALL_SLOTS_ORDERED.filter((s) => s !== '00:00');
   const regular: SlotState[] = nonMidnight.map((slot) => ({
     value:    slot,
-    disabled: slot <= start,                    // must be strictly after start
-    reason:   slot <= start ? ('INVALID_ORDER' as const) : undefined,
+    disabled: slot < start,
+    reason:   slot < start ? ('INVALID_ORDER' as const) : undefined,
   }));
+  // '24:00' midnight sentinel is always valid — represents 24:00 same day.
+  // When start='00:00', end='24:00' = 24h shift (serialized → '00:00', end≤start → +24h).
   const midnight: SlotState = {
-    value:    '00:00',
-    disabled: start === '00:00',                // zero-duration when start is also midnight
-    reason:   start === '00:00' ? ('INVALID_ORDER' as const) : undefined,
+    value:    '24:00',
+    disabled: false,
+    reason:   undefined,
   };
   return [...regular, midnight];
 }

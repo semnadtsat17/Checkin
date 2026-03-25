@@ -13,7 +13,8 @@ export interface CreateExtraWorkDto {
   departmentId:  string;
   date:          string;          // YYYY-MM-DD
   startTime:     string;          // HH:mm
-  endTime:       string;          // HH:mm
+  endTime:       string;          // HH:mm — "00:00" means same-day midnight UNLESS endNextDay=true
+  endNextDay?:   boolean;        // true  → endTime "00:00" means next-day midnight (24:00 UI)
   reason:        ExtraWorkReason;
   customReason?: string;
 }
@@ -21,7 +22,8 @@ export interface CreateExtraWorkDto {
 export interface UpdateExtraWorkDto {
   date?:         string;
   startTime?:    string;
-  endTime?:      string;
+  endTime?:      string;          // HH:mm — same convention as CreateExtraWorkDto
+  endNextDay?:   boolean;        // mirrors CreateExtraWorkDto.endNextDay
   reason?:       ExtraWorkReason;
   customReason?: string;
 }
@@ -234,7 +236,10 @@ export const extraWorkService = {
     assertTime(dto.startTime, 'startTime');
     assertTime(dto.endTime,   'endTime');
 
-    if (dto.startTime >= dto.endTime) {
+    // When endNextDay=true the UI sent "24:00", serialised to "00:00".
+    // normalizeRange() already extends end by +1 day when end <= start, so
+    // the overlap checks below are correct.  Skip the string-compare gate only.
+    if (!dto.endNextDay && dto.startTime >= dto.endTime) {
       throw new AppError(400, 'endTime must be after startTime', 'INVALID_TIME_RANGE');
     }
     if (!VALID_REASONS.includes(dto.reason)) {
@@ -244,23 +249,29 @@ export const extraWorkService = {
       throw new AppError(400, 'customReason is required when reason is "other"', 'VALIDATION_ERROR');
     }
 
-    // Duplicate check: same employee + date + exact time range
-    const isDuplicate = store.exists(
-      (ew) =>
-        ew.employeeId === dto.employeeId &&
-        ew.date       === dto.date       &&
-        ew.startTime  === dto.startTime  &&
-        ew.endTime    === dto.endTime
-    );
+    // Duplicate check: use normalized range overlap so that cross-midnight entries
+    // (endNextDay=true, stored as 00:00) are compared by absolute DateTime, not HH:mm strings.
+    // Check both dto.date and the previous calendar day to catch cross-midnight entries
+    // that originate on the day before and would logically overlap.
+    const dupPrevDate          = offsetDate(dto.date, -1);
+    const [newStart, newEnd]   = normalizeRange(dto.date, dto.startTime, dto.endTime);
+    const isDuplicate = store.exists((ew) => {
+      if (ew.employeeId !== dto.employeeId) return false;
+      if (ew.deletedAt)                     return false;
+      if (ew.date !== dto.date && ew.date !== dupPrevDate) return false;
+      const [ewStart, ewEnd] = normalizeRange(ew.date, ew.startTime, ew.endTime);
+      return absRangesOverlap([newStart, newEnd], [ewStart, ewEnd]);
+    });
     if (isDuplicate) {
       throw new AppError(409, 'A duplicate extra-work entry already exists', 'DUPLICATE');
     }
 
     // Overlap check — uses absolute Date comparison (mirrors frontend rangeEngine).
-    // resolveWorkingTimeRanges now includes draft records so draft shifts block OT.
+    // preferDraft=true: draft schedule takes priority over published so validation
+    // matches what the manager sees in the UI before they publish.
     const prevDate   = offsetDate(dto.date, -1);
-    const mainRanges = scheduleService.resolveWorkingTimeRanges(dto.employeeId, dto.date);
-    const prevRanges = scheduleService.resolveWorkingTimeRanges(dto.employeeId, prevDate);
+    const mainRanges = scheduleService.resolveWorkingTimeRanges(dto.employeeId, dto.date,   true);
+    const prevRanges = scheduleService.resolveWorkingTimeRanges(dto.employeeId, prevDate,   true);
     assertNoWorkingTimeOverlap(dto.date, dto.startTime, dto.endTime, dto.date,   mainRanges);
     assertNoWorkingTimeOverlap(dto.date, dto.startTime, dto.endTime, prevDate,   prevRanges);
 
@@ -303,15 +314,16 @@ export const extraWorkService = {
 
     const finalStart = patch.startTime ?? existing.startTime;
     const finalEnd   = patch.endTime   ?? existing.endTime;
-    if (finalStart >= finalEnd) {
+    // endNextDay mirrors the create-path convention: skip string-compare when true.
+    if (!dto.endNextDay && finalStart >= finalEnd) {
       throw new AppError(400, 'endTime must be after startTime', 'INVALID_TIME_RANGE');
     }
 
-    // Overlap check — absolute Date comparison, draft-inclusive resolver.
+    // Overlap check — absolute Date comparison, draft-first resolver.
     const finalDate  = patch.date ?? existing.date;
     const prevDate   = offsetDate(finalDate, -1);
-    const mainRanges = scheduleService.resolveWorkingTimeRanges(existing.employeeId, finalDate);
-    const prevRanges = scheduleService.resolveWorkingTimeRanges(existing.employeeId, prevDate);
+    const mainRanges = scheduleService.resolveWorkingTimeRanges(existing.employeeId, finalDate, true);
+    const prevRanges = scheduleService.resolveWorkingTimeRanges(existing.employeeId, prevDate,  true);
     assertNoWorkingTimeOverlap(finalDate, finalStart, finalEnd, finalDate, mainRanges);
     assertNoWorkingTimeOverlap(finalDate, finalStart, finalEnd, prevDate,  prevRanges);
 

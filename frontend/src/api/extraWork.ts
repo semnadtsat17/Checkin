@@ -7,6 +7,7 @@ export interface CreateExtraWorkDto {
   date:          string;
   startTime:     string;
   endTime:       string;
+  endNextDay?:   boolean;  // true when user selected "24:00" — tells backend endTime="00:00" is next-day midnight
   reason:        ExtraWorkReason;
   customReason?: string;
 }
@@ -15,6 +16,7 @@ export interface UpdateExtraWorkDto {
   date?:         string;
   startTime?:    string;
   endTime?:      string;
+  endNextDay?:   boolean;  // mirrors CreateExtraWorkDto.endNextDay
   reason?:       ExtraWorkReason;
   customReason?: string;
 }

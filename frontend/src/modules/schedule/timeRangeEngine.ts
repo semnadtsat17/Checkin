@@ -120,14 +120,20 @@ export function computeAllowedTimeRanges(
   //
   // Called per-render with current startTime — pure, no closure over mutable state.
   // Uses rangesOverlap from rangeEngine — the single overlap truth.
+  //
+  // '24:00' is appended as a display-only sentinel representing next-day midnight.
+  // toAbsoluteDate(date, '24:00') resolves via setHours(24) JS rollover — correct.
+  // serializeUiTime must convert '24:00' → '00:00' before any API call.
   function endSlots(startTime: string): SlotState[] {
     const startAbs = toAbsoluteDate(date, startTime);
+    const endSlotValues = [...slots, '24:00'];
 
-    return slots.map((slot) => {
+    return endSlotValues.map((slot) => {
       const slotAbs = toAbsoluteDate(date, slot);
 
-      // RULE: end must be strictly after start (same-day OT only)
-      if (slotAbs <= startAbs) {
+      // RULE: end must not be before start.
+      // Equal = 24h shift (normalizeHhmm sees end <= start → +24h).
+      if (slotAbs < startAbs) {
         return { value: slot, disabled: true, reason: 'INVALID_ORDER' };
       }
 
@@ -153,9 +159,15 @@ export function computeAllowedTimeRanges(
 /**
  * All slots disabled with INVALID_ORDER — returned as the end-slot list when
  * no startTime has been chosen yet.  Built once at module load; safe to share.
+ *
+ * '24:00' is included (disabled) so the dropdown always shows the full option
+ * list regardless of whether a startTime has been selected.
  */
-export const NO_START_END_SLOTS: SlotState[] = buildSlots(30).map((v) => ({
-  value:    v,
-  disabled: true,
-  reason:   'INVALID_ORDER' as const,
-}));
+export const NO_START_END_SLOTS: SlotState[] = [
+  ...buildSlots(30).map((v) => ({
+    value:    v,
+    disabled: true,
+    reason:   'INVALID_ORDER' as const,
+  })),
+  { value: '24:00', disabled: true, reason: 'INVALID_ORDER' as const },
+];

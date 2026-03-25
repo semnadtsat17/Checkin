@@ -8,6 +8,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Spinner, PageSpinner } from '../../components/Spinner';
 import { TimePicker } from '../../components/ui/TimePicker';
 import { getAllowedEndSlots, isForbiddenShiftState, isValidShiftTime } from '../../modules/schedule/shiftTimeConstraints';
+import { serializeUiTime, displayUiEndTime } from '../../modules/schedule/timeUiAdapter';
 
 // ─── Shift row in form ────────────────────────────────────────────────────────
 
@@ -154,7 +155,7 @@ function WorkSchedulePatternForm({
       nameTh:       s.nameTh,
       nameEn:       s.nameEn,
       startTime:    s.startTime,
-      endTime:      s.endTime,
+      endTime:      displayUiEndTime(s.endTime),
       isOvernight:  s.isOvernight,
       breakMinutes: s.breakMinutes,
     })) ?? [emptyShift()]
@@ -205,7 +206,7 @@ function WorkSchedulePatternForm({
         type: patternType,
         monthlyWorkingHours: h,
         ...(patternType === 'SHIFT_TIME'
-          ? { shifts }
+          ? { shifts: shifts.map(s => ({ ...s, endTime: serializeUiTime(s.endTime) })) }
           : { weeklySchedule }),
       };
       await onSave(dto);
