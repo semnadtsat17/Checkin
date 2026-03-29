@@ -18,6 +18,7 @@ import { deptApi } from '../../api/departments';
 import type { Department } from '@hospital-hr/shared';
 import { useTranslation } from '../../i18n/useTranslation';
 import { PageSpinner } from '../../components/Spinner';
+import { Modal } from '../../components/ui/Modal';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,11 @@ function fmtDate(iso: string): string {
   });
 }
 
-// ─── Photo thumbnail with lightbox ───────────────────────────────────────────
+// ─── Lazy photo viewer ────────────────────────────────────────────────────────
+//
+// Rule: images must NOT load until the user explicitly requests them.
+// The src URL is only assigned to an <img> element after the modal opens,
+// so the browser never issues a network request for the photo on list render.
 
 function PhotoThumb({ src, label }: { src: string | null; label: string }) {
   const [open, setOpen] = useState(false);
@@ -43,25 +48,29 @@ function PhotoThumb({ src, label }: { src: string | null; label: string }) {
 
   return (
     <>
+      {/* Button replaces the eager thumbnail — no <img> rendered here */}
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="block overflow-hidden rounded-xl border border-gray-100 hover:opacity-90 transition-opacity"
+        className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
       >
-        <img src={src} alt={label} className="h-28 w-28 object-cover" />
+        <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round"
+                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        View Snap
       </button>
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setOpen(false)}
-        >
-          <img
-            src={src}
-            alt={label}
-            className="max-h-[90vh] max-w-full rounded-2xl object-contain shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
+
+      {/* Image is only created in the DOM when the modal is open */}
+      <Modal open={open} onClose={() => setOpen(false)} title={label}>
+        <img
+          src={src}
+          alt={label}
+          className="w-full rounded-xl object-contain"
+        />
+      </Modal>
     </>
   );
 }

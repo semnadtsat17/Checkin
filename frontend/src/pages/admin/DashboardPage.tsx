@@ -6,6 +6,9 @@ import { listAttendance } from '../../api/attendance';
 import { reportApi, type PendingApprovalsReport, type MonthlySummaryReport } from '../../api/reports';
 import { employeeApi } from '../../api/employees';
 import { PageSpinner } from '../../components/Spinner';
+import { useAuth } from '../../context/AuthContext';
+import { useOrgSettings } from '../../hooks/useOrgSettings';
+import { updateOrgSettings } from '../../api/orgSettings';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -104,10 +107,15 @@ interface PageData {
 
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const { mode, requireManagerApproval, superAdminEnabled, refetch } = useOrgSettings();
 
   const [data,    setData]    = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+
+  // Super admin settings toggle state
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   useEffect(() => {
     const today = todayIso();
@@ -331,6 +339,94 @@ export default function DashboardPage() {
         )}
 
       </div>
+
+      {/* ── Super Admin Settings Panel ──────────────────────────────────────── */}
+      {/* Visible only when the authenticated user is super_admin.
+          Regular admins/managers never see this section.
+          Calls PATCH /org-settings then refreshes the context so all
+          components (CheckInPage, SummaryPage, etc.) re-render immediately. */}
+      {superAdminEnabled && user?.role === 'super_admin' && (
+        <section>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24"
+                   stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <h2 className="text-sm font-semibold text-amber-900">System Settings</h2>
+              <span className="ml-auto rounded-full bg-amber-200 px-2 py-0.5 text-xs font-medium text-amber-800">
+                Super Admin
+              </span>
+            </div>
+
+            {/* ── Attendance Mode toggle ── */}
+            <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Attendance Mode</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {mode === 'SIMPLE'
+                    ? 'SIMPLE — check-in/out only, no schedules or OT'
+                    : 'FULL — schedules, OT, and approvals active'}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={settingsSaving}
+                onClick={async () => {
+                  setSettingsSaving(true);
+                  try {
+                    await updateOrgSettings({ mode: mode === 'SIMPLE' ? 'FULL' : 'SIMPLE' });
+                    refetch();
+                  } finally {
+                    setSettingsSaving(false);
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent
+                  transition-colors duration-200 focus:outline-none disabled:opacity-50
+                  ${mode === 'SIMPLE' ? 'bg-amber-500' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow
+                  transition duration-200 ${mode === 'SIMPLE' ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* ── Manager approval override toggle ── */}
+            <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Require Manager Approval</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {requireManagerApproval
+                    ? 'ON — unscheduled check-ins go to manager queue'
+                    : 'OFF — unscheduled check-ins auto-clear silently'}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={settingsSaving}
+                onClick={async () => {
+                  setSettingsSaving(true);
+                  try {
+                    await updateOrgSettings({ requireManagerApproval: !requireManagerApproval });
+                    refetch();
+                  } finally {
+                    setSettingsSaving(false);
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent
+                  transition-colors duration-200 focus:outline-none disabled:opacity-50
+                  ${requireManagerApproval ? 'bg-primary-600' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow
+                  transition duration-200 ${requireManagerApproval ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+          </div>
+        </section>
+      )}
+
     </div>
   );
 }

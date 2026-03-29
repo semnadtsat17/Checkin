@@ -5,6 +5,7 @@ import { AppError } from '../../shared/middleware/errorHandler';
 import { hasPermission } from '../../core/permissions';
 import type { UserRecord } from '../employees/employee.service';
 import { scheduleService } from '../schedules/schedule.service';
+import { assertNotSimpleMode } from '../attendance/guards/simpleMode.guard';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -220,6 +221,7 @@ export const extraWorkService = {
     actorRole: UserRole,
     actorUserId: string
   ): ExtraWork {
+    assertNotSimpleMode('OT / extra-work creation');
     requireDeptAccess(actorRole, actorUserId, dto.departmentId);
 
     // Employee must belong to the stated department
@@ -294,6 +296,7 @@ export const extraWorkService = {
     actorRole: UserRole,
     actorUserId: string
   ): ExtraWork {
+    assertNotSimpleMode('OT / extra-work modification');
     const existing = this.findById(id);
     requireDeptAccess(actorRole, actorUserId, existing.departmentId);
 

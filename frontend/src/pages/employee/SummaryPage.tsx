@@ -3,6 +3,7 @@ import type { MonthlySummary } from '../../api/attendance';
 import { getMySummary } from '../../api/attendance';
 import { useTranslation } from '../../i18n/useTranslation';
 import { PageSpinner } from '../../components/Spinner';
+import { useOrgSettings } from '../../hooks/useOrgSettings';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,8 @@ function StatCard({
 
 export default function SummaryPage() {
   const { t } = useTranslation();
+  const { mode } = useOrgSettings();
+  const isSimpleMode = mode === 'SIMPLE';
 
   const [month,   setMonth]   = useState(() => new Date().toISOString().slice(0, 7));
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
@@ -92,37 +95,43 @@ export default function SummaryPage() {
                     <span className="text-base font-normal text-gray-400 ml-1">ชม.</span>
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">{t('attendance.summary.monthlyTarget')}</p>
-                  <p className="text-lg font-semibold text-gray-500 tabular-nums">
-                    {summary.monthlyTarget}
-                    <span className="text-sm font-normal ml-1">ชม.</span>
-                  </p>
-                </div>
+                {/* Monthly target — hidden in SIMPLE mode (no schedule enforcement) */}
+                {!isSimpleMode && (
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">{t('attendance.summary.monthlyTarget')}</p>
+                    <p className="text-lg font-semibold text-gray-500 tabular-nums">
+                      {summary.monthlyTarget}
+                      <span className="text-sm font-normal ml-1">ชม.</span>
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Progress bar */}
-              <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    pct >= 100 ? 'bg-green-500' : pct >= 70 ? 'bg-primary-500' : 'bg-yellow-400'
-                  }`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <p className="text-right text-xs text-gray-400">{pct}%</p>
+              {/* Progress bar + OT pill — hidden in SIMPLE mode */}
+              {!isSimpleMode && (
+                <>
+                  <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        pct >= 100 ? 'bg-green-500' : pct >= 70 ? 'bg-primary-500' : 'bg-yellow-400'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-right text-xs text-gray-400">{pct}%</p>
 
-              {/* OT pill */}
-              <div className="flex justify-center">
-                <span className={`rounded-full px-4 py-1 text-sm font-semibold ${
-                  overtimePositive
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-600'
-                }`}>
-                  {t('attendance.summary.overtime')}:{' '}
-                  {overtimePositive ? '+' : ''}{summary.overtime.toFixed(1)} ชม.
-                </span>
-              </div>
+                  <div className="flex justify-center">
+                    <span className={`rounded-full px-4 py-1 text-sm font-semibold ${
+                      overtimePositive
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-600'
+                    }`}>
+                      {t('attendance.summary.overtime')}:{' '}
+                      {overtimePositive ? '+' : ''}{summary.overtime.toFixed(1)} ชม.
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Day stats grid */}

@@ -8,6 +8,7 @@ import type { UserRecord } from '../employees/employee.service';
 import { computeMonthlySummary, type MonthlySummary } from './hours';
 import { resolveWorkingTime } from '../schedules/schedule.resolver';
 import type { ResolvedWorkingTime } from '../schedules/schedule.resolver';
+import { resolveCheckInStatus, resolveCheckOutStatus } from './attendance.processor';
 
 // ─── Repositories ─────────────────────────────────────────────────────────────
 
@@ -275,10 +276,10 @@ export const attendanceService = {
     // GPS fence validation
     enforceGpsFence(branchId, dto.lat, dto.lng);
 
-    // Determine status
+    // Determine status — delegates to processor so SIMPLE mode is respected
     const now   = new Date();
     const times = getScheduledTimes(userId, today);
-    const status = determineCheckInStatus(now, times);
+    const status = resolveCheckInStatus(now, times);
 
     return attendanceStore.create({
       userId,
@@ -320,12 +321,8 @@ export const attendanceService = {
     const times = getScheduledTimes(userId, today);
 
     // Update status to early_leave if leaving before shift end.
-    // pending_approval records are not touched here — manager will decide the final status.
-    let status = record.status;
-    if ((status === 'present' || status === 'late') &&
-        shouldMarkEarlyLeave(now, times?.endTime)) {
-      status = 'early_leave';
-    }
+    // Delegates to processor — SIMPLE mode always preserves current status.
+    const status = resolveCheckOutStatus(record.status, now, times?.endTime);
 
     return attendanceStore.updateById(record.id, {
       checkOutTime:  now.toISOString(),

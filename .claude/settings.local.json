@@ -7,7 +7,9 @@
       "Bash(timeout 10 npx ts-node --project tsconfig.json -e \"import\\(''''./src/core/server''''\\)\")",
       "Bash(head -20 grep -rn \"sortValue\\\\|isOvernight.*sort\\\\|sort.*start\" /c/Users/semna/Downloads/checkin/frontend/src/pages/employee/)",
       "Bash(find /c/Users/semna/Downloads/checkin/frontend/src -type f -name *.tsx)",
-      "Bash(find C:/Users/semna/Downloads/checkin/backend -name *.ts)"
+      "Bash(find C:/Users/semna/Downloads/checkin/backend -name *.ts)",
+      "Bash(find \"/d/Git Clone/Checkin/backend/data\" -type f -name \"*.json\" -exec wc -l {} +)",
+      "Bash(find '/d/Git Clone/Checkin' -type f -name *setting* -o -name *config* -o -name *organization*)"
     ]
   }
 }

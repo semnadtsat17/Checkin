@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { OrgSettingsProvider } from './context/OrgSettingsContext';
 import { hasPermission }  from './config/permissions';
 import ProtectedRoute, { PermissionGuard } from './components/ProtectedRoute';
 import LoginPage           from './pages/LoginPage';
@@ -43,6 +44,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        {/* OrgSettingsProvider lives inside AuthProvider so it can read
+            isAuthenticated before fetching. Fetches once on login, resets
+            on logout. All routes have access via useOrgSettings(). */}
+        <OrgSettingsProvider>
         <Routes>
           {/* Public */}
           <Route path="/login"           element={<LoginPage />} />
@@ -88,6 +93,7 @@ export default function App() {
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </OrgSettingsProvider>
       </AuthProvider>
     </BrowserRouter>
   );

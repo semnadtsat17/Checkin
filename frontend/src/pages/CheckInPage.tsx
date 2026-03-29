@@ -14,6 +14,7 @@ import { checkIn, checkOut, getToday } from '../api/attendance';
 import { scheduleApi } from '../api/schedules';
 import { workSchedulePatternApi } from '../api/subRoles';
 import { useAuth } from '../context/AuthContext';
+import { useOrgSettings } from '../hooks/useOrgSettings';
 import { useTranslation } from '../i18n/useTranslation';
 import { toLocalIso, getWeekStart, getWeekDates } from '../utils/date/getWeekStart';
 
@@ -60,6 +61,8 @@ const DAY_LABELS_SHORT = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา']
 export default function CheckInPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { mode, requireManagerApproval } = useOrgSettings();
+  const isSimpleMode = mode === 'SIMPLE';
 
   // Live clock
   const [now, setNow] = useState(new Date());
@@ -90,15 +93,15 @@ export default function CheckInPage() {
   const [subRoles, setSubRoles] = useState<WorkSchedulePattern[]>([]);
 
   useEffect(() => {
-    if (!user?.id) return;
-    // Use /my endpoint — works for all roles including employee/part_time
+    // SIMPLE mode: no schedules used — skip fetch to avoid unnecessary requests
+    if (!user?.id || isSimpleMode) return;
     scheduleApi.my({ weekStart: weekStartIso })
       .then(res => setSchedule(res[0] ?? null))
       .catch(() => {});
     workSchedulePatternApi.list()
       .then(setSubRoles)
       .catch(() => {});
-  }, [user?.id, weekStartIso]);
+  }, [user?.id, weekStartIso, isSimpleMode]);
 
   const todayDay   = schedule?.days?.[todayIso];
   const subRole    = user?.workSchedulePatternId ? subRoles.find(sr => sr.id === user.workSchedulePatternId) : null;
@@ -201,8 +204,8 @@ export default function CheckInPage() {
           </div>
           <div className="mt-1 text-sm text-gray-500">{formatDate(now)}</div>
 
-          {/* Today's shift badge(s) */}
-          <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+          {/* Today's shift badge(s) — hidden in SIMPLE mode */}
+          {!isSimpleMode && <div className="mt-3 flex flex-wrap justify-center gap-1.5">
             {todayDay?.isDayOff ? (
               <span className="inline-block rounded-full bg-gray-100 px-4 py-1 text-sm text-gray-500">
                 {t('schedule.dayOff')}
@@ -224,7 +227,7 @@ export default function CheckInPage() {
                 {t('attendance.noShiftToday')}
               </span>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* 2. Status card */}
@@ -333,8 +336,8 @@ export default function CheckInPage() {
           </div>
         )}
 
-        {/* Pending approval notice */}
-        {record?.status === 'pending_approval' && !successMsg && (
+        {/* Pending approval notice — only shown when manager approval is required */}
+        {record?.status === 'pending_approval' && !successMsg && requireManagerApproval && (
           <div className="bg-purple-50 border border-purple-200 text-purple-700 text-sm rounded-xl px-4 py-3">
             {t('attendance.pendingApprovalNote')}
           </div>
@@ -376,8 +379,8 @@ export default function CheckInPage() {
           </div>
         )}
 
-        {/* 5. Weekly schedule mini-grid */}
-        <div className="bg-white rounded-2xl shadow-sm p-4">
+        {/* 5. Weekly schedule mini-grid — hidden in SIMPLE mode */}
+        {!isSimpleMode && <div className="bg-white rounded-2xl shadow-sm p-4">
           <p className="text-xs font-medium text-gray-500 mb-3">{t('schedule.weekly')}</p>
           <div className="grid grid-cols-7 gap-1">
             {DAY_LABELS_SHORT.map((label, i) => {
@@ -406,7 +409,7 @@ export default function CheckInPage() {
               );
             })}
           </div>
-        </div>
+        </div>}
 
       </div>
     </div>

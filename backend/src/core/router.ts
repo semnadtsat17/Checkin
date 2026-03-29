@@ -17,6 +17,7 @@ import { extraWorkRouter }       from '../modules/extra-work/extra-work.router';
 import scheduleApprovalsRouter   from '../modules/schedule-approvals/schedule-approval.router';
 import notificationsRouter       from '../modules/notifications/notification.router';
 import holidaysRouter            from '../modules/holidays/holiday.router';
+import orgSettingsRouter         from '../modules/org-settings/org-settings.router';
 
 export function createRouter(): Router {
   const router = Router();
@@ -36,6 +37,7 @@ export function createRouter(): Router {
   router.use('/schedule-approvals',  scheduleApprovalsRouter);
   router.use('/notifications',       notificationsRouter);
   router.use('/holidays',            holidaysRouter);
+  router.use('/org-settings',        orgSettingsRouter);
 
   // Future modules register here:
   // router.use('/auth',       authRouter);

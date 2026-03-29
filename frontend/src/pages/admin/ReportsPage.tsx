@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Department } from '@hospital-hr/shared';
+import type { AttendanceRecord, Department } from '@hospital-hr/shared';
 import { useTranslation } from '../../i18n/useTranslation';
 import { deptApi } from '../../api/departments';
 import { getWeekStart, toLocalIso } from '../../utils/date/getWeekStart';
@@ -10,10 +10,113 @@ import {
   type PlannedVsActualReport,
   type PendingApprovalsReport,
 } from '../../api/reports';
+import { getAttendance, photoSrc } from '../../api/attendance';
+import { Modal } from '../../components/ui/Modal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Tab = 'weekly' | 'monthly' | 'planned' | 'pending';
+
+// ─── Lazy snap detail modal ───────────────────────────────────────────────────
+//
+// Fetches the full attendance record (including photo paths) only when the
+// user clicks "View Snap". The <img> elements are created only inside the
+// modal — never in the report list rows.
+
+function SnapDetailModal({
+  attendanceId,
+  onClose,
+}: {
+  attendanceId: string | null;
+  onClose:      () => void;
+}) {
+  const [record,  setRecord]  = useState<AttendanceRecord | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+
+  // Fetch only when the modal is opened (attendanceId becomes non-null)
+  useEffect(() => {
+    if (!attendanceId) { setRecord(null); return; }
+    setLoading(true);
+    setError('');
+    getAttendance(attendanceId)
+      .then(setRecord)
+      .catch(e => setError(e instanceof Error ? e.message : 'โหลดไม่สำเร็จ'))
+      .finally(() => setLoading(false));
+  }, [attendanceId]);
+
+  const checkInSrc  = photoSrc(record?.checkInPhoto);
+  const checkOutSrc = photoSrc(record?.checkOutPhoto);
+
+  return (
+    <Modal open={!!attendanceId} onClose={onClose} title="รายละเอียดการเช็คอิน" wide>
+      {loading && (
+        <p className="py-8 text-center text-sm text-gray-400">กำลังโหลด…</p>
+      )}
+      {error && (
+        <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</p>
+      )}
+      {record && !loading && (
+        <div className="space-y-4">
+          {/* Times + GPS */}
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-xl bg-gray-50 p-3">
+              <p className="text-xs text-gray-400 mb-1">เช็คอิน</p>
+              <p className="font-medium">
+                {record.checkInTime
+                  ? new Date(record.checkInTime).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit' })
+                  : '—'}
+              </p>
+              {record.checkInLat != null && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {record.checkInLat.toFixed(5)}, {record.checkInLng?.toFixed(5)}
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl bg-gray-50 p-3">
+              <p className="text-xs text-gray-400 mb-1">เช็คเอาท์</p>
+              <p className="font-medium">
+                {record.checkOutTime
+                  ? new Date(record.checkOutTime).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit' })
+                  : '—'}
+              </p>
+              {record.checkOutLat != null && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {record.checkOutLat.toFixed(5)}, {record.checkOutLng?.toFixed(5)}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Evidence photos — only loaded when this modal is open */}
+          <div className="flex flex-wrap gap-4">
+            {checkInSrc && (
+              <div>
+                <p className="text-xs text-gray-400 mb-1">รูปเช็คอิน</p>
+                <img src={checkInSrc} alt="check-in"
+                     className="h-48 w-48 rounded-xl object-cover border border-gray-100" />
+              </div>
+            )}
+            {checkOutSrc && (
+              <div>
+                <p className="text-xs text-gray-400 mb-1">รูปเช็คเอาท์</p>
+                <img src={checkOutSrc} alt="check-out"
+                     className="h-48 w-48 rounded-xl object-cover border border-gray-100" />
+              </div>
+            )}
+            {!checkInSrc && !checkOutSrc && (
+              <p className="text-sm text-gray-400">— ไม่มีรูปภาพ</p>
+            )}
+          </div>
+
+          {record.note && (
+            <p className="text-xs text-gray-500">หมายเหตุ: {record.note}</p>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +135,9 @@ export default function ReportsPage() {
   const [monthlyData, setMonthlyData] = useState<MonthlySummaryReport | null>(null);
   const [plannedData, setPlannedData] = useState<PlannedVsActualReport | null>(null);
   const [pendingData, setPendingData] = useState<PendingApprovalsReport| null>(null);
+
+  // Snap detail modal — holds the attendanceId of the selected row, or null when closed
+  const [snapId, setSnapId] = useState<string | null>(null);
 
   // Load departments for filter
   useEffect(() => {
@@ -127,6 +233,9 @@ export default function ReportsPage() {
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</p>
       )}
+
+      {/* Lazy snap modal — image network request fires only when snapId is set */}
+      <SnapDetailModal attendanceId={snapId} onClose={() => setSnapId(null)} />
 
       {/* ── Weekly ── */}
       {tab === 'weekly' && (
@@ -268,6 +377,7 @@ export default function ReportsPage() {
                     <th className="px-4 py-3 text-left">เช็คอิน</th>
                     <th className="px-4 py-3 text-left">เช็คเอาท์</th>
                     <th className="px-4 py-3 text-left">หมายเหตุ</th>
+                    <th className="px-4 py-3 text-left">หลักฐาน</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -282,6 +392,22 @@ export default function ReportsPage() {
                         {row.checkOutTime ? new Date(row.checkOutTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '—'}
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs">{row.note ?? '—'}</td>
+                      {/* View Snap: image fetched only on click, never on list render */}
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setSnapId(row.attendanceId)}
+                          className="flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                        >
+                          <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24"
+                               stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round"
+                                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          View Snap
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

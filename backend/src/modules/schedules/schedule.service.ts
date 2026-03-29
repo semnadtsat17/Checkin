@@ -15,6 +15,7 @@ import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
 import { hasPermission } from '../../core/permissions';
 import type { UserRecord } from '../employees/employee.service';
+import { assertNotSimpleMode } from '../attendance/guards/simpleMode.guard';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -358,6 +359,7 @@ export const scheduleService = {
     actorUserId: string,
     actorRole: UserRole
   ): WorkSchedule {
+    assertNotSimpleMode('schedule assignment');
     if (!dto.userId)    throw new AppError(400, 'userId is required',    'VALIDATION_ERROR');
     if (!dto.weekStart) throw new AppError(400, 'weekStart is required', 'VALIDATION_ERROR');
     assertDate(dto.weekStart, 'weekStart');
@@ -446,6 +448,7 @@ export const scheduleService = {
     actorUserId: string,
     actorRole: UserRole
   ): WorkSchedule {
+    assertNotSimpleMode('schedule modification');
     assertDate(date, 'date param');
 
     // Past schedules are immutable — reject explicit single-day updates to past dates.
@@ -472,6 +475,7 @@ export const scheduleService = {
   // ── Remove ────────────────────────────────────────────────────────────────────
 
   remove(id: string, actorUserId: string, actorRole: UserRole): void {
+    assertNotSimpleMode('schedule removal');
     const schedule = this.findById(id);
     verifyDeptAccess(actorUserId, actorRole, schedule.userId);
     scheduleStore.deleteById(id);
@@ -503,6 +507,7 @@ export const scheduleService = {
     actorUserId: string,
     actorRole:   UserRole
   ): ScheduleDayRecord[] {
+    assertNotSimpleMode('schedule assignment');
     const results: ScheduleDayRecord[] = [];
     const today = _todayIso();
 
@@ -1020,6 +1025,7 @@ export const scheduleService = {
     actorUserId:  string,
     actorRole:    UserRole
   ): ScheduleDayRecord[] {
+    assertNotSimpleMode('schedule publishing');
     if (!/^\d{4}-\d{2}$/.test(month)) {
       throw new AppError(400, 'month must be YYYY-MM', 'VALIDATION_ERROR');
     }
