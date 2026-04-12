@@ -18,6 +18,7 @@ import type { AttendanceRecord } from '@hospital-hr/shared';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import { authenticate } from '../../shared/middleware/auth';
 import { requireRole } from '../../shared/middleware/requireRole';
+import { logSettingsUpdate } from '../audit/audit.service';
 
 // ─── Storage shapes ───────────────────────────────────────────────────────────
 
@@ -25,6 +26,19 @@ interface OrgSettingsRecord {
   id:                      string;
   attendanceMode:          'WORKFORCE' | 'SIMPLE';
   requireManagerApproval:  boolean;
+  /**
+   * Maximum gap (minutes) between adjacent work segments that still causes them
+   * to be merged by the Snap Time Engine.  0 = only touching segments merge.
+   * Default: 0.
+   */
+  continuousGapMinutes:    number;
+  /**
+   * Approval chain for RETROACTIVE_CHECKIN requests.
+   *   HR_ONLY          — HR approves directly; no manager step.
+   *   MANAGER_THEN_HR  — Manager approves first, then HR (default).
+   *   MANAGER_ONLY     — Manager approves; no HR step required.
+   */
+  retroApprovalMode:       'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY';
   createdAt:               string;
   updatedAt:               string;
 }
@@ -32,8 +46,8 @@ interface OrgSettingsRecord {
 interface OrgSettingsAuditRecord {
   id:              string;
   changedByUserId: string;
-  previousValue:   Pick<OrgSettingsRecord, 'attendanceMode' | 'requireManagerApproval'>;
-  newValue:        Pick<OrgSettingsRecord, 'attendanceMode' | 'requireManagerApproval'>;
+  previousValue:   Pick<OrgSettingsRecord, 'attendanceMode' | 'requireManagerApproval' | 'continuousGapMinutes' | 'retroApprovalMode'>;
+  newValue:        Pick<OrgSettingsRecord, 'attendanceMode' | 'requireManagerApproval' | 'continuousGapMinutes' | 'retroApprovalMode'>;
   timestamp:       string;
   createdAt:       string;
   updatedAt:       string;
@@ -58,6 +72,8 @@ export const ORG_SETTINGS_UPDATED = 'ORG_SETTINGS_UPDATED';
 const SEED_DEFAULTS = {
   attendanceMode:         'WORKFORCE' as const,
   requireManagerApproval: true,
+  continuousGapMinutes:   0,
+  retroApprovalMode:      'MANAGER_THEN_HR' as const,
 };
 
 /** Get the singleton record, auto-creating with safe defaults if missing. */
@@ -73,6 +89,8 @@ function toClientShape(record: OrgSettingsRecord, isSuperAdmin: boolean) {
   return {
     mode:                   record.attendanceMode === 'SIMPLE' ? 'SIMPLE' : 'FULL',
     requireManagerApproval: record.requireManagerApproval ?? true,
+    continuousGapMinutes:   record.continuousGapMinutes   ?? 0,
+    retroApprovalMode:      record.retroApprovalMode      ?? 'MANAGER_THEN_HR',
     superAdminEnabled:      isSuperAdmin,
     hrReportImageMode:      'ON_DEMAND' as const,
   };
@@ -110,9 +128,11 @@ router.get('/', authenticate, (req, res) => {
 router.patch('/', authenticate, requireRole('super_admin'), (req, res) => {
   const record = getOrCreate();
 
-  const { mode, requireManagerApproval } = req.body as {
+  const { mode, requireManagerApproval, continuousGapMinutes, retroApprovalMode } = req.body as {
     mode?:                   'FULL' | 'SIMPLE';
     requireManagerApproval?: boolean;
+    continuousGapMinutes?:   number;
+    retroApprovalMode?:      'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY';
   };
 
   // Build the desired new state from the payload
@@ -126,12 +146,24 @@ router.patch('/', authenticate, requireRole('super_admin'), (req, res) => {
       ? Boolean(requireManagerApproval)
       : record.requireManagerApproval;
 
+  const desiredGap: number =
+    continuousGapMinutes !== undefined
+      ? Math.max(0, Math.floor(Number(continuousGapMinutes)))
+      : (record.continuousGapMinutes ?? 0);
+
+  const desiredRetroMode: 'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY' =
+    retroApprovalMode !== undefined
+      ? retroApprovalMode
+      : (record.retroApprovalMode ?? 'MANAGER_THEN_HR');
+
   // ── Guardrail 1: Idempotent ──────────────────────────────────────────────
   // If every requested field already matches the stored value, skip the write.
-  const modeChanging     = desiredMode     !== record.attendanceMode;
-  const approvalChanging = desiredApproval !== record.requireManagerApproval;
+  const modeChanging       = desiredMode       !== record.attendanceMode;
+  const approvalChanging   = desiredApproval   !== record.requireManagerApproval;
+  const gapChanging        = desiredGap        !== (record.continuousGapMinutes ?? 0);
+  const retroModeChanging  = desiredRetroMode  !== (record.retroApprovalMode ?? 'MANAGER_THEN_HR');
 
-  if (!modeChanging && !approvalChanging) {
+  if (!modeChanging && !approvalChanging && !gapChanging && !retroModeChanging) {
     return res.json({ success: true, data: toClientShape(record, true) });
   }
 
@@ -157,11 +189,15 @@ router.patch('/', authenticate, requireRole('super_admin'), (req, res) => {
   const previousValue = {
     attendanceMode:         record.attendanceMode,
     requireManagerApproval: record.requireManagerApproval,
+    continuousGapMinutes:   record.continuousGapMinutes   ?? 0,
+    retroApprovalMode:      record.retroApprovalMode      ?? 'MANAGER_THEN_HR' as const,
   };
 
   const patch: Partial<OrgSettingsRecord> = {};
-  if (modeChanging)     patch.attendanceMode         = desiredMode;
-  if (approvalChanging) patch.requireManagerApproval = desiredApproval;
+  if (modeChanging)      patch.attendanceMode         = desiredMode;
+  if (approvalChanging)  patch.requireManagerApproval = desiredApproval;
+  if (gapChanging)       patch.continuousGapMinutes   = desiredGap;
+  if (retroModeChanging) patch.retroApprovalMode      = desiredRetroMode;
 
   const updated = store.updateById(record.id, patch) ?? record;
 
@@ -186,20 +222,41 @@ router.patch('/', authenticate, requireRole('super_admin'), (req, res) => {
   }
 
   // ── Guardrail 5: Audit log ────────────────────────────────────────────────
+  const newValue = {
+    attendanceMode:         updated.attendanceMode,
+    requireManagerApproval: updated.requireManagerApproval,
+    continuousGapMinutes:   updated.continuousGapMinutes   ?? 0,
+    retroApprovalMode:      updated.retroApprovalMode      ?? 'MANAGER_THEN_HR',
+  };
+
+  // Domain-specific audit (org_settings_audit.json — kept for backwards compat)
   auditStore.create({
     changedByUserId: req.user!.userId,
     previousValue,
-    newValue: {
-      attendanceMode:         updated.attendanceMode,
-      requireManagerApproval: updated.requireManagerApproval,
-    },
+    newValue,
     timestamp: new Date().toISOString(),
   } as Omit<OrgSettingsAuditRecord, 'id' | 'createdAt' | 'updatedAt'>);
+
+  // Central audit log (audit_logs.json)
+  const changedFields: string[] = [];
+  if (modeChanging)      changedFields.push('attendanceMode');
+  if (approvalChanging)  changedFields.push('requireManagerApproval');
+  if (gapChanging)       changedFields.push('continuousGapMinutes');
+  if (retroModeChanging) changedFields.push('retroApprovalMode');
+
+  logSettingsUpdate(
+    req.user!.userId,
+    changedFields,
+    previousValue as unknown as Record<string, unknown>,
+    newValue      as unknown as Record<string, unknown>,
+  );
 
   // ── Guardrail 6: In-process event ─────────────────────────────────────────
   orgSettingsEvents.emit(ORG_SETTINGS_UPDATED, {
     attendanceMode:         updated.attendanceMode,
     requireManagerApproval: updated.requireManagerApproval,
+    continuousGapMinutes:   updated.continuousGapMinutes   ?? 0,
+    retroApprovalMode:      updated.retroApprovalMode      ?? 'MANAGER_THEN_HR',
     autoResolvedCount,
   });
 

@@ -9,6 +9,7 @@ import { PageSpinner } from '../../components/Spinner';
 import { useAuth } from '../../context/AuthContext';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
 import { updateOrgSettings } from '../../api/orgSettings';
+import { apiFetch } from '../../api/client';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -116,6 +117,33 @@ export default function DashboardPage() {
 
   // Super admin settings toggle state
   const [settingsSaving, setSettingsSaving] = useState(false);
+
+  // ── DEV ONLY ────────────────────────────────────────────────────────────────
+  const [devResetting, setDevResetting] = useState(false);
+
+  async function handleDevReset(targetMode: 'FULL' | 'SIMPLE', deleteCurrentMonthData: boolean) {
+    if (!window.confirm(
+      `DEV: Switch to ${targetMode} with deleteCurrentMonthData=${deleteCurrentMonthData}?\n\n` +
+      (deleteCurrentMonthData ? '⚠️  This permanently deletes current-month attendance + OT data.' : '⚠️  Mode will switch with mixed data — summaries may be incoherent.')
+    )) return;
+
+    setDevResetting(true);
+    try {
+      const res = await apiFetch<unknown>('/api/dev/reset-attendance-mode', {
+        method: 'POST',
+        body:   JSON.stringify({ targetMode, deleteCurrentMonthData }),
+      });
+      console.log('[DEV RESET] success:', res);
+      alert(`✅ DEV RESET OK → mode is now ${targetMode}\nSee console for full response.`);
+      refetch();
+    } catch (err) {
+      console.error('[DEV RESET] failed:', err);
+      alert(`❌ DEV RESET FAILED\n${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDevResetting(false);
+    }
+  }
+  // ── end DEV ONLY ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const today = todayIso();
@@ -375,12 +403,17 @@ export default function DashboardPage() {
                 type="button"
                 disabled={settingsSaving}
                 onClick={async () => {
-                  setSettingsSaving(true);
-                  try {
-                    await updateOrgSettings({ mode: mode === 'SIMPLE' ? 'FULL' : 'SIMPLE' });
-                    refetch();
-                  } finally {
-                    setSettingsSaving(false);
+                  const targetMode = mode === 'SIMPLE' ? 'FULL' : 'SIMPLE';
+                  if (import.meta.env.DEV) {
+                    await handleDevReset(targetMode, true);
+                  } else {
+                    setSettingsSaving(true);
+                    try {
+                      await updateOrgSettings({ mode: targetMode });
+                      refetch();
+                    } finally {
+                      setSettingsSaving(false);
+                    }
                   }
                 }}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent
@@ -423,6 +456,53 @@ export default function DashboardPage() {
               </button>
             </div>
 
+          </div>
+        </section>
+      )}
+
+      {/* ── DEV ONLY: quick mode-reset panel ────────────────────────────────
+           Remove this block before deploying to production.
+           Calls POST /api/dev/reset-attendance-mode (dev server only).        */}
+      {import.meta.env.DEV && (
+        <section>
+          <div style={{ border: '2px dashed #f87171', borderRadius: 12, padding: 16, background: '#fff1f2' }}>
+            <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#b91c1c', fontSize: 13 }}>
+              ⚠️ DEV ONLY — remove before production deploy
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                disabled={devResetting}
+                onClick={() => handleDevReset('FULL', true)}
+                style={{ padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, opacity: devResetting ? 0.5 : 1 }}
+              >
+                DEV RESET → FULL (delete data)
+              </button>
+              <button
+                type="button"
+                disabled={devResetting}
+                onClick={() => handleDevReset('SIMPLE', true)}
+                style={{ padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, opacity: devResetting ? 0.5 : 1 }}
+              >
+                DEV RESET → SIMPLE (delete data)
+              </button>
+              <button
+                type="button"
+                disabled={devResetting}
+                onClick={() => handleDevReset('FULL', false)}
+                style={{ padding: '6px 14px', background: '#7f1d1d', color: '#fca5a5', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, opacity: devResetting ? 0.5 : 1 }}
+              >
+                DEV BYPASS → FULL (keep data ⚠️)
+              </button>
+              <button
+                type="button"
+                disabled={devResetting}
+                onClick={() => handleDevReset('SIMPLE', false)}
+                style={{ padding: '6px 14px', background: '#7f1d1d', color: '#fca5a5', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, opacity: devResetting ? 0.5 : 1 }}
+              >
+                DEV BYPASS → SIMPLE (keep data ⚠️)
+              </button>
+            </div>
           </div>
         </section>
       )}

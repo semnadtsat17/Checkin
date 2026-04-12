@@ -36,6 +36,7 @@ export const PERMISSIONS = {
   ADMIN_ACCESS:          ['super_admin', 'hr', 'manager'],
   SCHEDULES_VIEW:        ['super_admin', 'hr', 'manager'],
   ATTENDANCE_VIEW:       ['super_admin', 'hr', 'manager'],
+  APPROVALS_VIEW:        ['super_admin', 'hr', 'manager'],
   REPORTS_VIEW:          ['super_admin', 'hr', 'manager'],
   EDIT_REQUESTS_VIEW:    ['super_admin', 'hr', 'manager'],
 
@@ -45,6 +46,9 @@ export const PERMISSIONS = {
   BRANCHES_MANAGE:       ['super_admin', 'hr'],
   WORK_PATTERNS_MANAGE:  ['super_admin', 'hr'],
   HOLIDAYS_MANAGE:       ['super_admin', 'hr'],
+
+  // ── Super Admin only ─────────────────────────────────────────────────────
+  SETTINGS_MANAGE:       ['super_admin'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

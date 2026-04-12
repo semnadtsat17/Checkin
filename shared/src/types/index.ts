@@ -22,6 +22,11 @@ export interface User {
   monthlyHoursOverride?: number;   // part-time: overrides default monthly hours
   mustChangePassword?: boolean;    // true after HR generates/resets a password
   managerDepartments?: string[];   // dept IDs this manager is allowed to manage (manager role only)
+  /**
+   * Employment start date.  Optional — not all employees have a recorded start date.
+   * Used for tenure calculations and future eligibility rules.
+   */
+  startWorkDate?: string;          // YYYY-MM-DD
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -138,6 +143,21 @@ export type AttendanceStatus =
   | 'holiday'
   | 'pending_approval';  // check-in with no scheduled shift — awaits manager review
 
+/**
+ * How the check-in was initiated.
+ *
+ * NORMAL_CHECKIN         — employee checked in within their assigned SNAP window.
+ * OUT_OF_SCHEDULE_CHECKIN — no assigned schedule; employee provides reason; goes to HR approval.
+ * RETROACTIVE_CHECKIN    — manual time entry after the fact; approval flow determined by
+ *                           org-settings.retroApprovalMode (MANAGER_THEN_HR / HR_ONLY / MANAGER_ONLY).
+ *
+ * Absent from legacy records (undefined) → treated as NORMAL_CHECKIN for backward compat.
+ */
+export type CheckInType =
+  | 'NORMAL_CHECKIN'
+  | 'OUT_OF_SCHEDULE_CHECKIN'
+  | 'RETROACTIVE_CHECKIN';
+
 export interface AttendanceRecord {
   id: string;
   userId: string;
@@ -151,6 +171,13 @@ export interface AttendanceRecord {
   checkOutLat?: number;
   checkOutLng?: number;
   status: AttendanceStatus;
+  /**
+   * How the check-in was initiated.  Absent on legacy records (created before
+   * this field existed) — treat as NORMAL_CHECKIN when undefined.
+   */
+  checkInType?: CheckInType;
+  /** Required when checkInType === 'OUT_OF_SCHEDULE_CHECKIN'. */
+  outOfScheduleReason?: string;
   note?: string;
   editRequestId?: string;
   approvedBy?: string;      // userId of manager who approved a pending_approval record
@@ -370,7 +397,9 @@ export interface DepartmentAssignment {
 export type AppNotificationType =
   | 'schedule_approved'
   | 'schedule_rejected'
-  | 'schedule_pending';
+  | 'schedule_pending'
+  | 'APPROVAL_REQUEST'   // new approval record waiting for a manager decision
+  | 'APPROVAL_RESULT';   // approval approved or rejected — sent to the employee
 
 export interface AppNotification {
   id: string;

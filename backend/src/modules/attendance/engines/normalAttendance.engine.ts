@@ -19,7 +19,7 @@
  *   approval modules
  */
 import type { AttendanceStatus } from '@hospital-hr/shared';
-import type { AttendanceEngine } from './attendance.engine';
+import type { AttendanceEngine, LeaveInfo } from './attendance.engine';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // Must stay in sync with the hardcoded values in attendance.service.ts.
@@ -39,16 +39,20 @@ function toMinutes(hhmm: string): number {
 
 export const normalAttendanceEngine: AttendanceEngine = {
   /**
-   * Mirrors determineCheckInStatus() from attendance.service.ts exactly.
+   * Evaluation order (leave must be checked FIRST — before any schedule math):
    *
-   *   no scheduled shift today → pending_approval
-   *   on time (within grace)   → present
-   *   past grace period        → late
+   *   1. on approved leave            → on_leave   (short-circuit)
+   *   2. no scheduled shift today     → pending_approval
+   *   3. on time (within grace)       → present
+   *   4. past grace period            → late
    */
   resolveCheckInStatus(
     now:          Date,
     workingTimes: { startTime: string; endTime: string } | null,
+    leaveInfo?:   LeaveInfo,
   ): AttendanceStatus {
+    if (leaveInfo?.isOnLeave) return 'on_leave';
+
     if (!workingTimes) return 'pending_approval';
 
     const shiftStartMins = toMinutes(workingTimes.startTime);
@@ -57,18 +61,22 @@ export const normalAttendanceEngine: AttendanceEngine = {
   },
 
   /**
-   * Mirrors shouldMarkEarlyLeave() from attendance.service.ts exactly.
+   * Evaluation order (leave checked first to short-circuit early_leave logic):
    *
-   *   pending_approval  → untouched (manager decides)
-   *   no shift end      → untouched
-   *   left ≥5 min early → early_leave
-   *   otherwise         → unchanged
+   *   1. on approved leave            → on_leave   (short-circuit)
+   *   2. pending_approval             → untouched  (manager decides)
+   *   3. no shift end                 → untouched
+   *   4. left ≥5 min early            → early_leave
+   *   5. otherwise                    → unchanged
    */
   resolveCheckOutStatus(
     previousStatus: AttendanceStatus,
     now:            Date,
     endTime?:       string,
+    leaveInfo?:     LeaveInfo,
   ): AttendanceStatus {
+    if (leaveInfo?.isOnLeave) return 'on_leave';
+
     // pending_approval records are not touched — manager will decide the final status.
     if (previousStatus !== 'present' && previousStatus !== 'late') return previousStatus;
     if (!endTime) return previousStatus;

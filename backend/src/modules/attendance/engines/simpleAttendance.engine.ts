@@ -31,29 +31,33 @@
  *   Built-in Node.js primitives
  */
 import type { AttendanceStatus } from '@hospital-hr/shared';
-import type { AttendanceEngine } from './attendance.engine';
+import type { AttendanceEngine, LeaveInfo } from './attendance.engine';
 
 export const simpleAttendanceEngine: AttendanceEngine = {
   /**
-   * In SIMPLE mode every check-in is unconditionally 'present'.
-   * The workingTimes argument is intentionally ignored — SIMPLE mode has no
-   * concept of scheduled shifts.
+   * In SIMPLE mode every check-in is 'present' — unless the employee has
+   * an approved leave, in which case 'on_leave' takes precedence.
+   * workingTimes is intentionally ignored (SIMPLE has no schedule concept).
    */
   resolveCheckInStatus(
     _now:          Date,
     _workingTimes: { startTime: string; endTime: string } | null,
+    leaveInfo?:    LeaveInfo,
   ): AttendanceStatus {
+    if (leaveInfo?.isOnLeave) return 'on_leave';
     return 'present';
   },
 
   /**
-   * In SIMPLE mode check-out never alters the status.
-   * There is no shift end to compare against, so early_leave is impossible.
+   * In SIMPLE mode check-out never alters the status — except when the
+   * existing record is 'on_leave', which is preserved as-is.
+   * (on_leave is already a terminal status for this engine.)
    */
   resolveCheckOutStatus(
     previousStatus: AttendanceStatus,
     _now:           Date,
     _endTime?:      string,
+    _leaveInfo?:    LeaveInfo,
   ): AttendanceStatus {
     return previousStatus;
   },

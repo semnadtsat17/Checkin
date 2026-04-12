@@ -9,6 +9,7 @@ import { computeMonthlySummary, type MonthlySummary } from './hours';
 import { resolveWorkingTime } from '../schedules/schedule.resolver';
 import type { ResolvedWorkingTime } from '../schedules/schedule.resolver';
 import { resolveCheckInStatus, resolveCheckOutStatus } from './attendance.processor';
+import { getLeaveStatusForDate } from '../leave/leaveAttendance.adapter';
 
 // ─── Repositories ─────────────────────────────────────────────────────────────
 
@@ -68,8 +69,8 @@ setInterval(() => {
 }, 300_000); // every 5 minutes
 
 
-const LATE_GRACE_MINUTES      = 15;
-const EARLY_LEAVE_GRACE_MINUTES = 5;
+/** Used only in approve() to recalculate status after a schedule is assigned. */
+const LATE_GRACE_MINUTES = 15;
 
 /** Return today's date string in YYYY-MM-DD. */
 function todayStr(): string {
@@ -164,37 +165,6 @@ async function warmResolverCacheForToday(): Promise<void> {
 warmResolverCacheForToday().catch(() => {});
 
 /**
- * Determine check-in status.
- *
- * - No scheduled shift today (times === null)  →  pending_approval
- *   (employee worked outside their assigned schedule; manager review required)
- * - Scheduled shift found, checked in on time  →  present
- * - Scheduled shift found, checked in late     →  late
- */
-function determineCheckInStatus(
-  checkInTime: Date,
-  times: { startTime: string; endTime: string } | null,
-): AttendanceStatus {
-  if (!times) return 'pending_approval';
-
-  const shiftStartMins = toMinutes(times.startTime);
-  const checkInMins    = checkInTime.getHours() * 60 + checkInTime.getMinutes();
-
-  return checkInMins > shiftStartMins + LATE_GRACE_MINUTES ? 'late' : 'present';
-}
-
-function shouldMarkEarlyLeave(checkOutTime: Date, shiftEnd?: string): boolean {
-  if (!shiftEnd) return false;
-
-  const shiftEndMins = toMinutes(shiftEnd);
-  // "00:00" end means midnight — treat as 24 * 60
-  const effectiveEnd = shiftEndMins === 0 ? 24 * 60 : shiftEndMins;
-  const checkOutMins = checkOutTime.getHours() * 60 + checkOutTime.getMinutes();
-
-  return checkOutMins < effectiveEnd - EARLY_LEAVE_GRACE_MINUTES;
-}
-
-/**
  * Validate GPS coordinates against the employee's branch fence.
  * Throws 403 if outside the fence.
  * No-ops when the branch has no fence configured.
@@ -276,10 +246,14 @@ export const attendanceService = {
     // GPS fence validation
     enforceGpsFence(branchId, dto.lat, dto.lng);
 
-    // Determine status — delegates to processor so SIMPLE mode is respected
+    // Leave projection — synchronous JSON read, no I/O.
+    // Passed directly into the engine; engines return 'on_leave' when true.
+    const leaveInfo = getLeaveStatusForDate(userId, today);
+
+    // Determine status — delegates to processor so SIMPLE mode is respected.
     const now   = new Date();
     const times = getScheduledTimes(userId, today);
-    const status = resolveCheckInStatus(now, times);
+    const status = resolveCheckInStatus(now, times, leaveInfo);
 
     return attendanceStore.create({
       userId,
@@ -320,9 +294,11 @@ export const attendanceService = {
     const now = new Date();
     const times = getScheduledTimes(userId, today);
 
-    // Update status to early_leave if leaving before shift end.
-    // Delegates to processor — SIMPLE mode always preserves current status.
-    const status = resolveCheckOutStatus(record.status, now, times?.endTime);
+    // Leave projection — same read as check-in, passed into engine.
+    const leaveInfo = getLeaveStatusForDate(userId, today);
+
+    // Delegates to processor — engine decides early_leave / on_leave / unchanged.
+    const status = resolveCheckOutStatus(record.status, now, times?.endTime, leaveInfo);
 
     return attendanceStore.updateById(record.id, {
       checkOutTime:  now.toISOString(),

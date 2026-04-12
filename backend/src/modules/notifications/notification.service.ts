@@ -1,7 +1,13 @@
 import type { AppNotification, AppNotificationType } from '@hospital-hr/shared';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
+import { emitNotification } from '../realtime/realtime.service';
 
 const store = new JsonRepository<AppNotification>('notifications');
+
+/** Exposed for tests only — wipes all notification records. */
+export function _clearNotificationsForTests(): void {
+  store.clear();
+}
 
 export const notificationService = {
 
@@ -13,7 +19,7 @@ export const notificationService = {
     body: string,
     relatedId?: string,
   ): AppNotification {
-    return store.create({
+    const created = store.create({
       userId,
       type,
       title,
@@ -21,6 +27,8 @@ export const notificationService = {
       relatedId,
       isRead: false,
     } as Omit<AppNotification, 'id' | 'createdAt' | 'updatedAt'>);
+    emitNotification(created);
+    return created;
   },
 
   /** List all notifications for a user, newest first. */

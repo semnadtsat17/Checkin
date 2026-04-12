@@ -17,29 +17,30 @@
  * the appropriate engine instead.
  */
 import type { AttendanceStatus } from '@hospital-hr/shared';
+import type { LeaveInfo } from './engines/attendance.engine';
 import { getAttendanceEngine } from './engines/attendanceEngine.registry';
 
 /**
  * Determine the check-in status for a new attendance record.
- * Signature is intentionally identical to the pre-engine version so that
- * attendance.service.ts requires no changes.
+ * leaveInfo is passed through to the engine unchanged — no logic here.
  */
 export function resolveCheckInStatus(
   checkInTime: Date,
   times:       { startTime: string; endTime: string } | null,
+  leaveInfo?:  LeaveInfo,
 ): AttendanceStatus {
-  return getAttendanceEngine().resolveCheckInStatus(checkInTime, times);
+  return getAttendanceEngine().resolveCheckInStatus(checkInTime, times, leaveInfo);
 }
 
 /**
  * Determine the final status after check-out.
- * Signature is intentionally identical to the pre-engine version so that
- * attendance.service.ts requires no changes.
+ * leaveInfo is passed through to the engine unchanged — no logic here.
  */
 export function resolveCheckOutStatus(
   currentStatus: AttendanceStatus,
   checkOutTime:  Date,
   shiftEnd?:     string,
+  leaveInfo?:    LeaveInfo,
 ): AttendanceStatus {
-  return getAttendanceEngine().resolveCheckOutStatus(currentStatus, checkOutTime, shiftEnd);
+  return getAttendanceEngine().resolveCheckOutStatus(currentStatus, checkOutTime, shiftEnd, leaveInfo);
 }

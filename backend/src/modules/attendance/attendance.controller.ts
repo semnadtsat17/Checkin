@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { attendanceService } from './attendance.service';
 import { ok, created } from '../../shared/utils/response';
 import type { AttendanceStatus } from '@hospital-hr/shared';
+import { logAttendanceEvent } from '../audit/audit.service';
 
 // POST /attendance/check-in   (multipart/form-data: photo + lat + lng + note)
 export function checkIn(req: Request, res: Response, next: NextFunction) {
@@ -16,6 +17,7 @@ export function checkIn(req: Request, res: Response, next: NextFunction) {
       photoPath: req.file?.filename,
       note:      req.body.note,
     });
+    logAttendanceEvent(userId, 'CHECK_IN', record.id);
     created(res, record, 'Check-in successful');
   } catch (e) { next(e); }
 }
@@ -33,6 +35,7 @@ export function checkOut(req: Request, res: Response, next: NextFunction) {
       photoPath: req.file?.filename,
       note:      req.body.note,
     });
+    logAttendanceEvent(userId, 'CHECK_OUT', record.id);
     ok(res, record, 'Check-out successful');
   } catch (e) { next(e); }
 }

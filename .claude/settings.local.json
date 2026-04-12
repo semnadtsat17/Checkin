@@ -9,7 +9,11 @@
       "Bash(find /c/Users/semna/Downloads/checkin/frontend/src -type f -name *.tsx)",
       "Bash(find C:/Users/semna/Downloads/checkin/backend -name *.ts)",
       "Bash(find \"/d/Git Clone/Checkin/backend/data\" -type f -name \"*.json\" -exec wc -l {} +)",
-      "Bash(find '/d/Git Clone/Checkin' -type f -name *setting* -o -name *config* -o -name *organization*)"
+      "Bash(find '/d/Git Clone/Checkin' -type f -name *setting* -o -name *config* -o -name *organization*)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"require\\('zod'\\); console.log\\('zod ok'\\)\")",
+      "Bash(npx vitest:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

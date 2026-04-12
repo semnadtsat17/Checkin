@@ -50,6 +50,7 @@ const P = {
   branches:    'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z',
   subRoles:    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
   holidays:    'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+  approvals:   'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
   hamburger:   'M4 6h16M4 12h16M4 18h16',
   close:       'M6 18L18 6M6 6l12 12',
   globe:       'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129',
@@ -174,6 +175,7 @@ function EmployeeSidebarContent({
       />
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        <SideLink to="/employee-dashboard" icon={P.dashboard}>{t('nav.dashboard')}</SideLink>
         <SideLink to="/checkin"     icon={P.checkin}>  {t('attendance.checkIn')}</SideLink>
         <SideLink to="/my-schedule" icon={P.schedule}> {t('nav.schedule')}</SideLink>
         <SideLink to="/summary"     icon={P.summary}>  {t('attendance.summary.title')}</SideLink>
@@ -197,6 +199,7 @@ function AdminSidebarContent({
   const adminTools = ([
     { path: '/dashboard',              label: t('nav.dashboard'),     icon: P.dashboard,   permission: 'ADMIN_ACCESS' },
     { path: '/attendance',             label: t('nav.attendance'),    icon: P.attendance,  permission: 'ATTENDANCE_VIEW' },
+    { path: '/approval-dashboard',     label: 'อนุมัติคำขอ',          icon: P.approvals,   permission: 'APPROVALS_VIEW' },
     { path: '/schedules',              label: 'จัดตารางเวร',          icon: P.schedMgr,    permission: 'SCHEDULES_VIEW' },
     { path: '/edit-requests',          label: t('editRequest.title'), icon: P.editReq,     permission: 'EDIT_REQUESTS_VIEW' },
     { path: '/reports',                label: t('nav.reports'),       icon: P.reports,     permission: 'REPORTS_VIEW' },
@@ -259,11 +262,11 @@ function AdminSidebarContent({
 type TabDef = { path: string; labelKey: Parameters<ReturnType<typeof useTranslation>['t']>[0]; icon: string };
 
 const EMPLOYEE_TABS: TabDef[] = [
-  { path: '/checkin',     labelKey: 'attendance.checkIn',       icon: P.checkin },
-  { path: '/history',     labelKey: 'attendance.history',       icon: P.history },
-  { path: '/summary',     labelKey: 'attendance.summary.title', icon: P.summary },
-  { path: '/my-schedule', labelKey: 'nav.schedule',             icon: P.schedule },
-  { path: '/profile',     labelKey: 'nav.profile',              icon: P.profile },
+  { path: '/employee-dashboard', labelKey: 'nav.dashboard',            icon: P.dashboard },
+  { path: '/checkin',            labelKey: 'attendance.checkIn',       icon: P.checkin },
+  { path: '/history',            labelKey: 'attendance.history',       icon: P.history },
+  { path: '/summary',            labelKey: 'attendance.summary.title', icon: P.summary },
+  { path: '/my-schedule',        labelKey: 'nav.schedule',             icon: P.schedule },
 ];
 
 const ADMIN_TABS: TabDef[] = [

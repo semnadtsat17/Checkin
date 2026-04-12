@@ -20,6 +20,9 @@ import ReportsPage           from './pages/admin/ReportsPage';
 import ApprovalsPage       from './pages/admin/ApprovalsPage';
 import EditRequestsPage    from './pages/admin/EditRequestsPage';
 import HolidaysPage        from './pages/admin/HolidaysPage';
+import HRSettings          from './pages/admin/HRSettings';
+import ApprovalDashboard  from './pages/manager/ApprovalDashboard';
+import EmployeeDashboard  from './pages/employee/EmployeeDashboard';
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -37,7 +40,7 @@ function RootRedirect() {
   if (isLoading) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (mustChangePassword) return <Navigate to="/change-password" replace />;
-  return <Navigate to={hasPermission(user?.role, 'ADMIN_ACCESS') ? '/dashboard' : '/checkin'} replace />;
+  return <Navigate to={hasPermission(user?.role, 'ADMIN_ACCESS') ? '/dashboard' : '/employee-dashboard'} replace />;
 }
 
 export default function App() {
@@ -79,10 +82,17 @@ export default function App() {
             <Route element={<PermissionGuard permission="HOLIDAYS_MANAGE" />}>
               <Route path="/holidays" element={<HolidaysPage />} />
             </Route>
+            <Route element={<PermissionGuard permission="APPROVALS_VIEW" />}>
+              <Route path="/approval-dashboard" element={<ApprovalDashboard />} />
+            </Route>
+            <Route element={<PermissionGuard permission="SETTINGS_MANAGE" />}>
+              <Route path="/hr-settings" element={<HRSettings />} />
+            </Route>
           </Route>
 
           {/* ── All authenticated users (employee-style bottom nav) ── */}
           <Route element={<ProtectedRoute />}>
+            <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
             <Route path="/checkin"      element={<CheckInPage />} />
             <Route path="/history"      element={<HistoryPage />} />
             <Route path="/summary"      element={<SummaryPage />} />
