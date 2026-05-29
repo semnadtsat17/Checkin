@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { HolidayType, HolidayDate } from '@hospital-hr/shared';
+import type { HolidayType, HolidayDate, Branch } from '@hospital-hr/shared';
 import { useTranslation } from '../../i18n/useTranslation';
+import { useAuth } from '../../context/AuthContext';
 import { holidaysApi, type CreateTypeDto, type CreateDateDto } from '../../api/holidays';
+import { branchApi } from '../../api/branches';
 import { formatHolidayDate, buildHolidayDate } from '../../utils/dateFormat';
 import { useCurrentYear } from '../../hooks/useCurrentYear';
 import { invalidateScheduleCache, } from '../../modules/schedule/scheduleInvalidator';
@@ -181,7 +183,15 @@ function isUpcomingHoliday(mmdd: string): boolean {
 
 export default function HolidaysPage() {
   const { t, locale } = useTranslation();
+  const { user }       = useAuth();
   const currentYear    = useCurrentYear();
+  const isSuperAdmin   = user?.role === 'super_admin' || user?.role === 'admin';
+
+  // Branch filter (super_admin only)
+  const [branches,       setBranches]       = useState<Branch[]>([]);
+  const [filterBranchId, setFilterBranchId] = useState<string>(
+    isSuperAdmin ? '' : (user?.branchId ?? ''),
+  );
 
   // Types
   const [types,       setTypes]       = useState<HolidayType[]>([]);
@@ -211,17 +221,26 @@ export default function HolidaysPage() {
   const [presetsLoading, setPresetsLoading] = useState(false);
   const [actionError, setActionError] = useState('');
 
+  // ── Load branches (super_admin) ──────────────────────────────────────────────
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      branchApi.list().then(setBranches).catch(() => {});
+    }
+  }, [isSuperAdmin]);
+
   // ── Load types ───────────────────────────────────────────────────────────────
 
   function loadTypes() {
     setTypesLoading(true);
-    holidaysApi.listTypes()
-      .then(setTypes)
+    holidaysApi.listTypes(filterBranchId || undefined)
+      .then(data => { setTypes(data); setSelectedType(null); })
       .catch(() => {})
       .finally(() => setTypesLoading(false));
   }
 
-  useEffect(() => { loadTypes(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadTypes(); }, [filterBranchId]);
 
   // ── Load dates when type selected ────────────────────────────────────────────
 
@@ -240,7 +259,7 @@ export default function HolidaysPage() {
     if (editingType) {
       await holidaysApi.updateType(editingType.id, dto);
     } else {
-      await holidaysApi.createType(dto);
+      await holidaysApi.createType({ ...dto, branchId: filterBranchId || undefined });
     }
     setShowTypeModal(false);
     loadTypes();
@@ -311,9 +330,21 @@ export default function HolidaysPage() {
   return (
     <div className="p-6 max-w-6xl">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">{t('holiday.title')}</h1>
-        <p className="mt-0.5 text-sm text-gray-400">{types.length} ประเภทวันหยุด</p>
+      <div className="mb-6 flex flex-wrap items-end gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">{t('holiday.title')}</h1>
+          <p className="mt-0.5 text-sm text-gray-400">{types.length} ประเภทวันหยุด</p>
+        </div>
+        {isSuperAdmin && branches.length > 0 && (
+          <select
+            value={filterBranchId}
+            onChange={e => setFilterBranchId(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+          >
+            <option value="">{t('common.all')} ({t('nav.branches')})</option>
+            {branches.map(b => <option key={b.id} value={b.id}>{b.nameTh}</option>)}
+          </select>
+        )}
       </div>
 
       {actionError && (

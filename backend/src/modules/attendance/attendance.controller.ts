@@ -4,7 +4,7 @@ import { ok, created } from '../../shared/utils/response';
 import type { AttendanceStatus } from '@hospital-hr/shared';
 import { logAttendanceEvent } from '../audit/audit.service';
 
-// POST /attendance/check-in   (multipart/form-data: photo + lat + lng + note)
+// POST /attendance/check-in   (multipart/form-data: photo + lat + lng + note + shiftCode)
 export function checkIn(req: Request, res: Response, next: NextFunction) {
   try {
     const { userId, branchId } = req.user!;
@@ -16,13 +16,14 @@ export function checkIn(req: Request, res: Response, next: NextFunction) {
       lng,
       photoPath: req.file?.filename,
       note:      req.body.note,
+      shiftCode: req.body.shiftCode || undefined,
     });
     logAttendanceEvent(userId, 'CHECK_IN', record.id);
     created(res, record, 'Check-in successful');
   } catch (e) { next(e); }
 }
 
-// POST /attendance/check-out  (multipart/form-data: photo + lat + lng + note)
+// POST /attendance/check-out  (multipart/form-data: photo + lat + lng + note + checkoutLateReason + claimedCheckOutTime)
 export function checkOut(req: Request, res: Response, next: NextFunction) {
   try {
     const { userId, branchId } = req.user!;
@@ -32,8 +33,10 @@ export function checkOut(req: Request, res: Response, next: NextFunction) {
     const record = attendanceService.checkOut(userId, branchId, {
       lat,
       lng,
-      photoPath: req.file?.filename,
-      note:      req.body.note,
+      photoPath:          req.file?.filename,
+      note:               req.body.note,
+      checkoutLateReason: req.body.checkoutLateReason || undefined,
+      claimedCheckOutTime: req.body.claimedCheckOutTime || undefined,
     });
     logAttendanceEvent(userId, 'CHECK_OUT', record.id);
     ok(res, record, 'Check-out successful');

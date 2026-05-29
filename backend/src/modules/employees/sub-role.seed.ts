@@ -13,14 +13,15 @@
  */
 import { subRoleService } from './sub-role.service';
 
-export function seedSubRoles(): void {
-  // Guard: only seed when the collection is empty
-  if (subRoleService.findAll().length > 0) return;
+export function seedSubRoles(branchId: string): void {
+  // Guard: only seed when the collection is empty for this branch
+  if (subRoleService.findAll({ branchId }).length > 0) return;
 
   // ── Template 1: 2-shift ────────────────────────────────────────────────────
   subRoleService.create({
     nameTh:              'เวรสองกะ (ด-น)',
     nameEn:              '2-Shift (D/N)',
+    branchId,
     forRole:             'employee',
     monthlyWorkingHours: 240,   // 20 days × 12 h
     shifts: [
@@ -49,6 +50,7 @@ export function seedSubRoles(): void {
   subRoleService.create({
     nameTh:              'เวรสามกะ (ช-บ-ด)',
     nameEn:              '3-Shift (Morning/Afternoon/Night)',
+    branchId,
     forRole:             'employee',
     monthlyWorkingHours: 240,   // 30 days × 8 h
     shifts: [

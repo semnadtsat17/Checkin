@@ -1,25 +1,27 @@
-/**
- * EditRequestsPage — HR reviews manager-submitted edit requests.
+﻿/**
+ * EditRequestsPage โ€” HR reviews manager-submitted edit requests.
  *
  * Managers submit edit requests to change attendance timestamps (e.g. fix a
  * forgotten check-out). HR reviews each request showing:
  *   - Employee name + original attendance record with photos
- *   - What the manager wants to change (original → requested)
+ *   - What the manager wants to change (original โ’ requested)
  *   - The manager's reason
  *   - Approve / Reject (with rejection reason)
  */
 import { useCallback, useEffect, useState } from 'react';
-import type { AttendanceRecord, EditRequest, User } from '@hospital-hr/shared';
+import type { AttendanceRecord, Branch, EditRequest, UserProfile } from '@hospital-hr/shared';
 import { editRequestApi } from '../../api/editRequests';
 import { getAttendance, photoSrc } from '../../api/attendance';
 import { employeeApi } from '../../api/employees';
+import { branchApi } from '../../api/branches';
+import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/useTranslation';
 import { PageSpinner } from '../../components/Spinner';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Helpers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function fmtDT(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return 'โ€”';
   return new Date(iso).toLocaleString('th-TH', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -32,11 +34,11 @@ function fmtDate(iso: string): string {
   });
 }
 
-// ─── Photo thumbnail ──────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Photo thumbnail โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function PhotoThumb({ src, label }: { src: string | null; label: string }) {
   const [open, setOpen] = useState(false);
-  if (!src) return <span className="text-xs text-gray-300">— ไม่มีรูป</span>;
+  if (!src) return <span className="text-xs text-gray-300">โ€” ไม่มีรูป</span>;
 
   return (
     <>
@@ -63,7 +65,7 @@ function PhotoThumb({ src, label }: { src: string | null; label: string }) {
   );
 }
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Status badge โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 const STATUS_STYLE: Record<string, string> = {
   pending:  'bg-yellow-100 text-yellow-700',
@@ -71,7 +73,7 @@ const STATUS_STYLE: Record<string, string> = {
   rejected: 'bg-red-100 text-red-600',
 };
 
-// ─── Request card ─────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Request card โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function RequestCard({
   req,
@@ -84,8 +86,8 @@ function RequestCard({
 }: {
   req:           EditRequest;
   attendance:    AttendanceRecord | null;
-  employeeMap:   Map<string, User>;
-  requestorMap:  Map<string, User>;
+  employeeMap:   Map<string, UserProfile>;
+  requestorMap:  Map<string, UserProfile>;
   onApprove:     (id: string) => void;
   onReject:      (id: string, reason: string) => void;
   actionPending: boolean;
@@ -99,7 +101,7 @@ function RequestCard({
 
   const empName = employee
     ? `${employee.firstNameTh} ${employee.lastNameTh}`
-    : (attendance?.userId ?? '—');
+    : (attendance?.userId ?? 'โ€”');
   const reqName = requestor
     ? `${requestor.firstNameTh} ${requestor.lastNameTh}`
     : req.requestedBy;
@@ -125,7 +127,7 @@ function RequestCard({
             <p className="text-sm text-gray-500 mt-0.5">{fmtDate(attendance.date)}</p>
           )}
           <p className="text-xs text-gray-400 mt-1">
-            ขอโดย: <span className="text-gray-600">{reqName}</span> · {fmtDT(req.createdAt)}
+            ขอขดย: <span className="text-gray-600">{reqName}</span> ยท {fmtDT(req.createdAt)}
           </p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLE[req.status] ?? 'bg-gray-100 text-gray-500'}`}>
@@ -149,35 +151,12 @@ function RequestCard({
         </div>
       )}
 
-      {/* Original → Requested diff */}
+      {/* Original โ’ Requested diff */}
       <div className="mx-5 mb-4 rounded-xl bg-gray-50 overflow-hidden divide-y divide-gray-100">
         {req.requestedData.checkInTime !== undefined && (
           <div className="px-4 py-3 grid grid-cols-2 gap-2 text-sm">
             <div>
-              <p className="text-xs text-gray-400">{t('editRequest.originalTime')} (เข้า)</p>
-              <p className="font-medium text-gray-700 line-through decoration-red-400">{fmtDT(req.originalData.checkInTime)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">{t('editRequest.requestedTime')} (เข้า)</p>
-              <p className="font-medium text-green-700">{fmtDT(req.requestedData.checkInTime)}</p>
-            </div>
-          </div>
-        )}
-        {req.requestedData.checkOutTime !== undefined && (
-          <div className="px-4 py-3 grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <p className="text-xs text-gray-400">{t('editRequest.originalTime')} (ออก)</p>
-              <p className="font-medium text-gray-700 line-through decoration-red-400">{fmtDT(req.originalData.checkOutTime)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">{t('editRequest.requestedTime')} (ออก)</p>
-              <p className="font-medium text-green-700">{fmtDT(req.requestedData.checkOutTime)}</p>
-            </div>
-          </div>
-        )}
-        {req.requestedData.note !== undefined && (
-          <div className="px-4 py-3 text-sm">
-            <p className="text-xs text-gray-400 mb-0.5">{t('common.remark')}</p>
+              <p className="text-xs text-gray-400">{t('editRequest.originalTime>{t('editRequest.originalTime')} (เข้า)<editRequest.originalTime>{t('editRequest.originalTime')} (เข้า)<editRequest.originalTime>{t('editRequest.originalTime')} (ออก)<editRequest.requestedTime>{t('editRequest.originalTime')} (ออก)<common.remark')}</p>
             <p className="text-gray-700">{req.requestedData.note || '(ลบหมายเหตุ)'}</p>
           </div>
         )}
@@ -197,7 +176,7 @@ function RequestCard({
         </div>
       )}
 
-      {/* Actions — only for pending */}
+      {/* Actions โ€” only for pending */}
       {isPending && (
         rejectOpen ? (
           <div className="border-t border-gray-100 px-5 py-4 space-y-3">
@@ -248,37 +227,47 @@ function RequestCard({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Page โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 type FilterStatus = 'pending' | 'approved' | 'rejected';
 
 export default function EditRequestsPage() {
-  const { t } = useTranslation();
+  const { t }    = useTranslation();
+  const { user } = useAuth();
 
-  const [requests,     setRequests]     = useState<EditRequest[]>([]);
-  const [attendanceMap,setAttendanceMap]= useState<Map<string, AttendanceRecord>>(new Map());
-  const [employeeMap,  setEmployeeMap]  = useState<Map<string, User>>(new Map());
-  const [filter,       setFilter]       = useState<FilterStatus>('pending');
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState('');
-  const [pending,      setPending]      = useState<Set<string>>(new Set());
+  const isSuperAdmin = user?.role === 'super_admin';
 
-  // Load employees once
+  const [requests,       setRequests]       = useState<EditRequest[]>([]);
+  const [attendanceMap,  setAttendanceMap]  = useState<Map<string, AttendanceRecord>>(new Map());
+  const [employeeMap,    setEmployeeMap]    = useState<Map<string, UserProfile>>(new Map());
+  const [branches,       setBranches]       = useState<Branch[]>([]);
+  const [filter,         setFilter]         = useState<FilterStatus>('pending');
+  const [filterBranchId, setFilterBranchId] = useState('');
+  const [loading,        setLoading]        = useState(false);
+  const [error,          setError]          = useState('');
+  const [pending,        setPending]        = useState<Set<string>>(new Set());
+
   useEffect(() => {
     employeeApi.list({ pageSize: 500 })
       .then(r => {
-        const map = new Map<string, User>();
+        const map = new Map<string, UserProfile>();
         r.items.forEach(e => map.set(e.id, e));
         setEmployeeMap(map);
       })
       .catch(() => {});
-  }, []);
+    if (isSuperAdmin) {
+      branchApi.list().then(setBranches).catch(() => {});
+    }
+  }, [isSuperAdmin]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const reqs = await editRequestApi.list({ status: filter });
+      const reqs = await editRequestApi.list({
+        status:   filter,
+        ...(filterBranchId ? { branchId: filterBranchId } : {}),
+      });
       setRequests(reqs);
 
       // Eagerly load all distinct attendance records
@@ -296,7 +285,7 @@ export default function EditRequestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, t]);
+  }, [filter, filterBranchId, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -347,6 +336,22 @@ export default function EditRequestsPage() {
         </button>
       </div>
 
+      {/* Branch filter -- only shown when super_admin has multiple branches */}
+      {isSuperAdmin && branches.length > 0 && (
+        <div className="mb-3">
+          <select
+            value={filterBranchId}
+            onChange={(e) => setFilterBranchId(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+          >
+            <option value="">— ทุกสาขา —</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>{b.nameTh}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Status filter tabs */}
       <div className="mb-4 flex gap-1 rounded-xl bg-gray-100 p-1">
         {TABS.map(tab => (
@@ -390,3 +395,4 @@ export default function EditRequestsPage() {
     </div>
   );
 }
+

@@ -1,0 +1,1594 @@
+[
+  {
+    "userId": "897c40ea-3831-41b7-8171-871a20e7dd3d",
+    "weekStart": "2026-03-01",
+    "days": {
+      "2026-03-04": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-05": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-06": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-02": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "b9071fa2-adc0-4f48-b96c-d581db40a520",
+    "createdAt": "2026-03-08T14:03:59.770Z",
+    "updatedAt": "2026-03-12T09:26:23.932Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-02-22",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "88f6eaf7-e80a-4af4-a171-61ab7df8b576",
+    "createdAt": "2026-03-08T14:06:46.741Z",
+    "updatedAt": "2026-03-15T18:15:44.718Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-03-01",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "ด"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-02": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-03": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-04": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-05": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-06": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "965ee106-fcc3-492e-b1b9-f0efcdabfea3",
+    "createdAt": "2026-03-08T14:06:46.755Z",
+    "updatedAt": "2026-03-15T18:07:09.664Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-03-08",
+    "days": {
+      "2026-03-07": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-09": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-10": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-11": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-12": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-13": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-14": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "f3b849b5-d4bd-42d6-8f64-093164e7f449",
+    "createdAt": "2026-03-08T14:06:46.770Z",
+    "updatedAt": "2026-03-15T18:06:53.684Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-03-15",
+    "days": {
+      "2026-03-14": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-16": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "c92fb3f6-11b2-427e-971c-128b1eb1383e",
+    "createdAt": "2026-03-08T14:06:46.784Z",
+    "updatedAt": "2026-03-15T18:06:53.637Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-03-22",
+    "days": {
+      "2026-03-21": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-22": {
+        "shiftCode": "ด",
+        "shiftCodes": [
+          "ด"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-23": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-24": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-25": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "9c2284a0-8435-4141-a65e-c18cc513156d",
+    "createdAt": "2026-03-08T14:06:46.797Z",
+    "updatedAt": "2026-03-15T17:43:29.333Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-003",
+    "weekStart": "2026-03-08",
+    "days": {
+      "2026-03-09": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D",
+          "N"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-10": {
+        "shiftCode": "N",
+        "shiftCodes": [
+          "N"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-11": {
+        "shiftCode": "N",
+        "shiftCodes": [
+          "N"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-12": {
+        "shiftCode": "N",
+        "shiftCodes": [
+          "N"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-13": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "f3eee9ab-6c87-49a6-9b2b-ea64fb341798",
+    "createdAt": "2026-03-12T09:26:23.915Z",
+    "updatedAt": "2026-03-15T17:24:10.083Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "897c40ea-3831-41b7-8171-871a20e7dd3d",
+    "weekStart": "2026-03-08",
+    "days": {
+      "2026-03-14": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-11": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "51f4f05e-94d0-4fef-ba83-0461d5608dc9",
+    "createdAt": "2026-03-12T09:26:23.924Z",
+    "updatedAt": "2026-03-12T09:26:23.924Z"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-08",
+    "days": {
+      "2026-03-07": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-09": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-10": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-11": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-12": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-13": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-14": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "195a6edf-6c3a-468c-97bf-f57c025721fa",
+    "createdAt": "2026-03-15T16:46:35.542Z",
+    "updatedAt": "2026-03-15T18:06:53.669Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-15",
+    "days": {
+      "2026-03-14": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-16": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "2c6286b1-ff72-4b75-9f86-a8dc686d251a",
+    "createdAt": "2026-03-15T16:46:35.555Z",
+    "updatedAt": "2026-03-15T18:06:53.652Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-01",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-02": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-03": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-04": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-05": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-06": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-07": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "88b0a945-3831-4c6d-8fbd-1098d98c6544",
+    "createdAt": "2026-03-15T16:47:30.323Z",
+    "updatedAt": "2026-03-15T18:06:53.559Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-03-01",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-02": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-03": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-04": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-05": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-06": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-07": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "14a564c3-c722-4232-94e6-e4142f496eff",
+    "createdAt": "2026-03-15T16:47:30.348Z",
+    "updatedAt": "2026-03-15T18:06:53.589Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-003",
+    "weekStart": "2026-03-15",
+    "days": {
+      "2026-03-14": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-16": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-21": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "14489435-2586-4117-8144-2826df3ac818",
+    "createdAt": "2026-03-15T16:49:32.123Z",
+    "updatedAt": "2026-03-15T17:23:20.743Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-003",
+    "weekStart": "2026-03-01",
+    "days": {
+      "2026-03-07": {
+        "shiftCode": "N",
+        "shiftCodes": [
+          "N"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": "N",
+        "shiftCodes": [
+          "N"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "8d89fc82-ef1c-474b-a984-77dda65f4adf",
+    "createdAt": "2026-03-15T17:24:10.070Z",
+    "updatedAt": "2026-03-15T17:24:26.078Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-02-22",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "e24ba116-6650-40b5-8668-3009fa2e7d72",
+    "createdAt": "2026-03-15T17:30:14.846Z",
+    "updatedAt": "2026-03-15T18:06:53.526Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-03-15",
+    "days": {
+      "2026-03-14": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-16": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "2d6379a0-2457-4ab6-9c5c-26ce86ddbaf6",
+    "createdAt": "2026-03-15T17:30:36.148Z",
+    "updatedAt": "2026-03-15T18:06:53.621Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-03-22",
+    "days": {
+      "2026-03-21": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-22": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-23": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-24": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-25": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "e50f9724-8645-453f-9d98-6716d009ab53",
+    "createdAt": "2026-03-15T17:30:36.160Z",
+    "updatedAt": "2026-03-15T17:43:29.375Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-03-08",
+    "days": {
+      "2026-03-07": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-09": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-10": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-11": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-12": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-13": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-14": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "ede7844d-4844-42d9-b17e-5f5f1cbf54d5",
+    "createdAt": "2026-03-15T17:30:55.618Z",
+    "updatedAt": "2026-03-15T18:06:53.604Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-22",
+    "days": {
+      "2026-03-21": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-22": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-23": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-24": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-25": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "92dd55eb-33bf-4971-bea0-cf0ac0a530c7",
+    "createdAt": "2026-03-15T17:31:38.187Z",
+    "updatedAt": "2026-03-15T17:43:29.258Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-02-22",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "50941ccb-b22c-4c18-8295-f5c0d063845b",
+    "createdAt": "2026-03-15T17:31:38.306Z",
+    "updatedAt": "2026-03-15T18:06:53.712Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-02-23",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "6a15f7be-d189-49e6-8ab6-38512b0b754d",
+    "createdAt": "2026-03-15T18:43:14.070Z",
+    "updatedAt": "2026-03-15T19:35:42.101Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-02-23",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "fb2e4fbc-dc21-4405-9fac-a99f134cf00a",
+    "createdAt": "2026-03-15T18:43:35.147Z",
+    "updatedAt": "2026-03-15T19:35:41.911Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-03-02",
+    "days": {
+      "2026-03-02": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-03": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-04": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-05": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-06": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-07": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "4061cc21-8ca5-4794-8fde-9cb2440d4867",
+    "createdAt": "2026-03-15T18:43:35.180Z",
+    "updatedAt": "2026-03-15T19:35:41.942Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-02",
+    "days": {
+      "2026-03-02": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-03": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-04": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-05": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-06": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-07": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "7441c70e-f31e-4747-b572-a95a6c95b92b",
+    "createdAt": "2026-03-15T18:43:35.196Z",
+    "updatedAt": "2026-03-15T19:35:41.927Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-03-02",
+    "days": {
+      "2026-03-02": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-03": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-04": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-05": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-06": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-07": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-08": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "fcb353f9-c461-469d-bc48-3ff0351ceb8a",
+    "createdAt": "2026-03-15T18:49:59.620Z",
+    "updatedAt": "2026-03-15T19:35:41.957Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-03-09",
+    "days": {
+      "2026-03-09": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-10": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-11": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-12": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-13": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-14": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "7a11a6d3-736f-4880-bef6-cd3bb5d127e9",
+    "createdAt": "2026-03-15T18:49:59.634Z",
+    "updatedAt": "2026-03-15T19:35:41.971Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-03-09",
+    "days": {
+      "2026-03-09": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-10": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-11": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-12": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-13": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-14": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "ebfdcbb0-e8af-460c-be2c-b3f55ba841a2",
+    "createdAt": "2026-03-15T18:49:59.650Z",
+    "updatedAt": "2026-03-15T19:35:41.983Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-09",
+    "days": {
+      "2026-03-09": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-10": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-11": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-12": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-13": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-14": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-15": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "1a7bac38-2049-464a-839d-4268e29c8ae7",
+    "createdAt": "2026-03-15T18:49:59.693Z",
+    "updatedAt": "2026-03-15T19:35:41.998Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-16",
+    "days": {
+      "2026-03-16": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ",
+          "ด"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": "ด",
+        "shiftCodes": [
+          "ด",
+          "บ",
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-21": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-22": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ",
+          "ช",
+          "ด"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "9e7075be-b2b5-4323-b248-13c1340d7105",
+    "createdAt": "2026-03-15T18:49:59.706Z",
+    "updatedAt": "2026-03-16T09:43:11.191Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-03-16",
+    "days": {
+      "2026-03-16": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ",
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-21": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-22": {
+        "shiftCode": "ด",
+        "shiftCodes": [
+          "ด"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "756bf43a-4f57-47ed-902a-b7e6c8cf70d9",
+    "createdAt": "2026-03-15T18:49:59.722Z",
+    "updatedAt": "2026-03-16T09:43:11.206Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-02-23",
+    "days": {
+      "2026-03-01": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "0a0cb764-b00d-4d80-953b-859d63840e65",
+    "createdAt": "2026-03-15T18:49:59.735Z",
+    "updatedAt": "2026-03-15T19:35:42.089Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-03-16",
+    "days": {
+      "2026-03-16": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-21": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-22": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "293a530a-8fe0-4487-89b0-41a67c414887",
+    "createdAt": "2026-03-15T18:49:59.750Z",
+    "updatedAt": "2026-03-16T09:43:11.219Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-23",
+    "days": {
+      "2026-03-23": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ",
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-24": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช",
+          "บ"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-25": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ",
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-26": {
+        "shiftCode": "บ",
+        "shiftCodes": [
+          "บ",
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-27": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-28": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-29": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "b7105ffb-7424-47c6-af22-54e54ed7f9d3",
+    "createdAt": "2026-03-15T18:49:59.764Z",
+    "updatedAt": "2026-03-16T09:43:11.230Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-005",
+    "weekStart": "2026-03-23",
+    "days": {
+      "2026-03-23": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-24": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-25": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      },
+      "2026-03-26": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "bd9ee2ec-581b-447a-9292-3ae3d54b7f07",
+    "createdAt": "2026-03-15T18:49:59.777Z",
+    "updatedAt": "2026-03-15T19:35:42.064Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-004",
+    "weekStart": "2026-03-23",
+    "days": {
+      "2026-03-23": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-24": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-25": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-26": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "fe92f9dd-c92f-443b-ac92-1dc5d0bdee4c",
+    "createdAt": "2026-03-15T18:49:59.793Z",
+    "updatedAt": "2026-03-16T09:43:11.254Z",
+    "updatedBy": "emp-002"
+  },
+  {
+    "userId": "emp-003",
+    "weekStart": "2026-03-16",
+    "days": {
+      "2026-03-16": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-21": {
+        "shiftCode": null,
+        "shiftCodes": [],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-003",
+    "id": "f60460ac-da94-4bb5-8f66-61aedcd05f29",
+    "createdAt": "2026-03-15T21:25:43.629Z",
+    "updatedAt": "2026-03-15T21:25:43.629Z"
+  },
+  {
+    "userId": "emp-001",
+    "weekStart": "2026-03-30",
+    "days": {
+      "2026-03-30": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-31": {
+        "shiftCode": "ช",
+        "shiftCodes": [
+          "ช"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "da493b68-e153-448c-8469-8b60f36b5e9d",
+    "createdAt": "2026-03-16T09:43:11.243Z",
+    "updatedAt": "2026-03-16T09:43:11.243Z"
+  }
+]

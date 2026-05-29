@@ -1,0 +1,81 @@
+[
+  {
+    "userId": "emp-003",
+    "weekStart": "2026-03-16",
+    "days": {
+      "2026-03-16": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-17": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-18": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-19": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-20": {
+        "shiftCode": "D",
+        "shiftCodes": [
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-21": {
+        "shiftCode": "N",
+        "shiftCodes": [
+          "N",
+          "D"
+        ],
+        "isDayOff": false
+      },
+      "2026-03-22": {
+        "shiftCode": "N",
+        "shiftCodes": [
+          "N"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-002",
+    "id": "2bdfe48b-c67a-4e24-aeda-24b97a91f57f",
+    "createdAt": "2026-03-15T22:16:22.111Z",
+    "updatedAt": "2026-03-15T23:39:17.964Z",
+    "updatedBy": "emp-003"
+  },
+  {
+    "userId": "emp-003",
+    "weekStart": "2026-03-23",
+    "days": {
+      "2026-03-23": {
+        "shiftCode": "N",
+        "shiftCodes": [
+          "N",
+          "D"
+        ],
+        "isDayOff": false
+      }
+    },
+    "createdBy": "emp-003",
+    "id": "8fa72a55-9bd1-498d-b7d0-e0db0b0c0a16",
+    "createdAt": "2026-03-15T23:39:48.754Z",
+    "updatedAt": "2026-03-15T23:39:48.754Z"
+  }
+]

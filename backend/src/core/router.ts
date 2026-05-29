@@ -18,11 +18,15 @@ import scheduleApprovalsRouter   from '../modules/schedule-approvals/schedule-ap
 import notificationsRouter       from '../modules/notifications/notification.router';
 import holidaysRouter            from '../modules/holidays/holiday.router';
 import orgSettingsRouter         from '../modules/org-settings/org-settings.router';
+import orgInfoRouter             from '../modules/org-info/org-info.router';
+import branchSettingsRouter      from '../modules/branch-settings/branch-settings.router';
 import leaveRouter               from '../modules/leave/leave.router';
 import attendanceApprovalRouter  from '../modules/attendance/attendance-approval.router';
 import auditRouter               from '../modules/audit/audit.router';
 import realtimeRouter            from '../modules/realtime/realtime.router';
 import devRouter                 from '../modules/dev/dev.router';
+import overtimeRouter            from '../modules/overtime/overtime.router';
+import shiftTransferRouter       from '../modules/shift-transfer/shift-transfer.router';
 
 export function createRouter(): Router {
   const router = Router();
@@ -43,15 +47,15 @@ export function createRouter(): Router {
   router.use('/notifications',       notificationsRouter);
   router.use('/holidays',            holidaysRouter);
   router.use('/org-settings',        orgSettingsRouter);
+  router.use('/org-info',            orgInfoRouter);
+  router.use('/branch-settings',     branchSettingsRouter);
   router.use('/leave',               leaveRouter);
   router.use('/attendance-approvals', attendanceApprovalRouter);
   router.use('/audit-logs',           auditRouter);
   router.use('/realtime',             realtimeRouter);
   router.use('/dev',                  devRouter);              // guarded by devOnlyGuard (blocks production)
-
-  // Future modules register here:
-  // router.use('/auth',       authRouter);
-  // router.use('/overtime',   overtimeRouter);
+  router.use('/overtime',            overtimeRouter);
+  router.use('/shift-transfer',      shiftTransferRouter);
 
   return router;
 }

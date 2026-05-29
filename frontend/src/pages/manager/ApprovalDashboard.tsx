@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ApprovalDashboard.tsx
  *
  * Manager view for reviewing late-arrival and OT approval requests.
@@ -6,7 +6,7 @@
  * Data flow:
  *   - On mount / tab switch: fetch records for the active status tab from
  *     GET /api/attendance-approvals?status=<tab>
- *   - PENDING tab: optimistic update — remove the row immediately, PATCH in
+ *   - PENDING tab: optimistic update โ€” remove the row immediately, PATCH in
  *     the background, re-fetch on error to restore consistency
  *   - APPROVED / REJECTED tabs: read-only history from the server
  *
@@ -15,7 +15,7 @@
  * the admin panel.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { User } from '@hospital-hr/shared';
+import type { UserProfile } from '@hospital-hr/shared';
 import { employeeApi } from '../../api/employees';
 import { getApprovals, updateApprovalStatus } from '../../api/approvals';
 import type { AttendanceApproval, ApprovalStatus } from '../../api/approvals';
@@ -24,7 +24,7 @@ import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useRealtime } from '../../hooks/useRealtime';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Helpers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('th-TH', {
@@ -53,7 +53,7 @@ const TYPE_STYLE: Record<AttendanceApproval['type'], string> = {
   OT:   'bg-blue-100   text-blue-700',
 };
 
-// ─── Reject confirm dialog ────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Reject confirm dialog โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function RejectDialog({
   open,
@@ -98,7 +98,7 @@ function RejectDialog({
   );
 }
 
-// ─── Approval row ─────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Approval row โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function ApprovalRow({
   approval,
@@ -108,7 +108,7 @@ function ApprovalRow({
   onRejectClick,
 }: {
   approval:      AttendanceApproval;
-  employeeMap:   Map<string, User>;
+  employeeMap:   Map<string, UserProfile>;
   busy:          boolean;
   onApprove:     (id: string) => void;
   onRejectClick: (id: string) => void;
@@ -117,7 +117,7 @@ function ApprovalRow({
   const name = emp
     ? `${emp.firstNameTh} ${emp.lastNameTh}`
     : approval.employeeId;
-  const code = emp?.employeeCode ?? '—';
+  const code = emp?.employeeCode ?? 'โ€”';
 
   return (
     <tr className="hover:bg-gray-50 transition-colors">
@@ -150,7 +150,7 @@ function ApprovalRow({
         <StatusBadge status={approval.status} />
       </td>
 
-      {/* Actions — only rendered for PENDING rows */}
+      {/* Actions โ€” only rendered for PENDING rows */}
       <td className="px-4 py-3.5">
         {approval.status === 'PENDING' ? (
           <div className="flex items-center gap-2">
@@ -178,7 +178,7 @@ function ApprovalRow({
           </div>
         ) : (
           <span className="text-xs text-gray-400">
-            {approval.reviewedAt ? fmtDateTime(approval.reviewedAt) : '—'}
+            {approval.reviewedAt ? fmtDateTime(approval.reviewedAt) : 'โ€”'}
           </span>
         )}
       </td>
@@ -186,36 +186,36 @@ function ApprovalRow({
   );
 }
 
-// ─── Filter tab ───────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Filter tab โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 const FILTER_TABS: { value: ApprovalStatus | 'ALL'; label: string }[] = [
   { value: 'PENDING',  label: 'รอการอนุมัติ' },
-  { value: 'APPROVED', label: 'อนุมัติแล้ว'   },
+  { value: 'APPROVED', label: 'อนุมัติกลฉว'   },
   { value: 'REJECTED', label: 'ถูกปฏิเสธ'     },
 ];
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Page โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 export default function ApprovalDashboard() {
-  // ── Per-tab record cache ────────────────────────────────────────────────────
+  // โ”€โ”€ Per-tab record cache โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   const [records,     setRecords]     = useState<AttendanceApproval[]>([]);
-  const [employeeMap, setEmployeeMap] = useState<Map<string, User>>(new Map());
+  const [employeeMap, setEmployeeMap] = useState<Map<string, UserProfile>>(new Map());
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
 
-  // ── Per-row action state ────────────────────────────────────────────────────
+  // โ”€โ”€ Per-row action state โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
-  // ── Filter ──────────────────────────────────────────────────────────────────
+  // โ”€โ”€ Filter โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   const [filterStatus, setFilterStatus] = useState<ApprovalStatus>('PENDING');
 
-  // ── Reject confirm dialog ───────────────────────────────────────────────────
+  // โ”€โ”€ Reject confirm dialog โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const rejectBusy = rejectTarget !== null && busyIds.has(rejectTarget);
 
-  // ── Realtime updates ────────────────────────────────────────────────────────
+  // โ”€โ”€ Realtime updates โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   useRealtime({
-    // A new PENDING approval arrived — prepend to the list when on the PENDING tab
+    // A new PENDING approval arrived โ€” prepend to the list when on the PENDING tab
     onApprovalCreated: (record) => {
       if (filterStatus !== 'PENDING') return;
       setRecords((prev) =>
@@ -229,7 +229,7 @@ export default function ApprovalDashboard() {
         // On APPROVED / REJECTED tabs: add the record if its new status matches the tab
         if (filterStatus === record.status) {
           return prev.some((r) => r.id === record.id)
-            ? filtered          // already present → just remove stale copy
+            ? filtered          // already present โ’ just remove stale copy
             : [record, ...filtered];
         }
         return filtered;
@@ -237,7 +237,7 @@ export default function ApprovalDashboard() {
     },
   });
 
-  // ── Error auto-clear ────────────────────────────────────────────────────────
+  // โ”€โ”€ Error auto-clear โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   function showError(msg: string) {
     setError(msg);
@@ -245,7 +245,7 @@ export default function ApprovalDashboard() {
     errorTimer.current = setTimeout(() => setError(''), 5000);
   }
 
-  // ── Load (re-runs whenever the active tab changes) ───────────────────────────
+  // โ”€โ”€ Load (re-runs whenever the active tab changes) โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   const load = useCallback(async (status: ApprovalStatus) => {
     setLoading(true);
@@ -254,12 +254,12 @@ export default function ApprovalDashboard() {
       const [approvals, emps] = await Promise.all([
         getApprovals(status),
         employeeMap.size > 0
-          ? Promise.resolve({ items: [] as User[] })   // already loaded
-          : employeeApi.list({ pageSize: 500 }).catch(() => ({ items: [] as User[] })),
+          ? Promise.resolve({ items: [] as UserProfile[] })   // already loaded
+          : employeeApi.list({ pageSize: 500 }).catch(() => ({ items: [] as UserProfile[] })),
       ]);
       setRecords(approvals);
       if (emps.items.length > 0) {
-        const map = new Map<string, User>();
+        const map = new Map<string, UserProfile>();
         emps.items.forEach((e) => map.set(e.id, e));
         setEmployeeMap(map);
       }
@@ -269,11 +269,11 @@ export default function ApprovalDashboard() {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);   // employeeMap excluded intentionally — we only want to load it once
+  }, []);   // employeeMap excluded intentionally โ€” we only want to load it once
 
   useEffect(() => { load(filterStatus); }, [load, filterStatus]);
 
-  // ── Actions ─────────────────────────────────────────────────────────────────
+  // โ”€โ”€ Actions โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   async function handleReview(id: string, decision: 'APPROVED' | 'REJECTED') {
     setBusyIds((s) => new Set(s).add(id));
@@ -302,7 +302,7 @@ export default function ApprovalDashboard() {
     if (rejectTarget) handleReview(rejectTarget, 'REJECTED');
   }
 
-  // ── Tab switch ───────────────────────────────────────────────────────────────
+  // โ”€โ”€ Tab switch โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   function handleTabChange(status: ApprovalStatus) {
     setFilterStatus(status);
@@ -311,12 +311,12 @@ export default function ApprovalDashboard() {
 
   const displayList = records;
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // โ”€โ”€ Render โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   return (
     <div className="p-6 max-w-5xl space-y-6">
 
-      {/* ── Header ── */}
+      {/* โ”€โ”€ Header โ”€โ”€ */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">คิวอนุมัติ</h1>
@@ -341,7 +341,7 @@ export default function ApprovalDashboard() {
         </button>
       </div>
 
-      {/* ── Error banner ── */}
+      {/* โ”€โ”€ Error banner โ”€โ”€ */}
       {error && (
         <div className="flex items-center gap-3 rounded-xl bg-red-50 px-4 py-3 text-sm
           text-red-600 ring-1 ring-red-200">
@@ -354,7 +354,7 @@ export default function ApprovalDashboard() {
         </div>
       )}
 
-      {/* ── Filter tabs ── */}
+      {/* โ”€โ”€ Filter tabs โ”€โ”€ */}
       <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit">
         {FILTER_TABS.map(({ value, label }) => {
           if (value === 'ALL') return null;
@@ -388,7 +388,7 @@ export default function ApprovalDashboard() {
         })}
       </div>
 
-      {/* ── Content ── */}
+      {/* โ”€โ”€ Content โ”€โ”€ */}
       {loading ? (
         <PageSpinner />
       ) : displayList.length === 0 ? (
@@ -455,7 +455,7 @@ export default function ApprovalDashboard() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
-                      <p className="text-xs text-gray-400">{emp?.employeeCode ?? '—'}</p>
+                      <p className="text-xs text-gray-400">{emp?.employeeCode ?? 'โ€”'}</p>
                     </div>
                     <StatusBadge status={a.status} />
                   </div>
@@ -484,8 +484,8 @@ export default function ApprovalDashboard() {
                           disabled:opacity-50 transition-colors"
                       >
                         {busy && <Spinner size="sm" color="white" />}
-                        อนุมัติ
-                      </button>
+              อนุมัติ
+            </button>
                       <button
                         type="button"
                         disabled={busy}
@@ -505,7 +505,7 @@ export default function ApprovalDashboard() {
         </div>
       )}
 
-      {/* ── Reject confirm dialog ── */}
+      {/* โ”€โ”€ Reject confirm dialog โ”€โ”€ */}
       <RejectDialog
         open={rejectTarget !== null}
         onClose={() => { if (!rejectBusy) setRejectTarget(null); }}
@@ -516,3 +516,4 @@ export default function ApprovalDashboard() {
     </div>
   );
 }
+

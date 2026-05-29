@@ -1,0 +1,15 @@
+[
+  {
+    "attendanceMode": "WORKFORCE",
+    "requireManagerApproval": true,
+    "continuousGapMinutes": 0,
+    "retroApprovalMode": "MANAGER_THEN_HR",
+    "id": "1ded5119-2082-46a1-861d-01fd8f093566",
+    "createdAt": "2026-04-23T11:38:01.932Z",
+    "updatedAt": "2026-04-23T15:44:35.091Z",
+    "photoRule": {
+      "requireCheckInPhoto": true,
+      "requireCheckOutPhoto": true
+    }
+  }
+]

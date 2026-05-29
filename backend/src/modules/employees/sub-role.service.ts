@@ -24,6 +24,7 @@ export interface WeeklyScheduleDayDto {
 export interface CreateWorkSchedulePatternDto {
   nameTh:               string;
   nameEn?:              string;
+  branchId:             string;
   forRole:              UserRole;
   type?:                WorkSchedulePatternType;    // defaults to SHIFT_TIME
   monthlyWorkingHours:  number;
@@ -43,6 +44,7 @@ export interface UpdateWorkSchedulePatternDto {
 }
 
 export interface WorkSchedulePatternFilters {
+  branchId?: string;
   forRole?:  UserRole;
   isActive?: boolean;
 }
@@ -193,8 +195,9 @@ export const workSchedulePatternService = {
 
   findAll(filters: WorkSchedulePatternFilters = {}): WorkSchedulePattern[] {
     return store.findAll((s) => {
-      if (filters.forRole  !== undefined && s.forRole  !== filters.forRole)   return false;
-      if (filters.isActive !== undefined && s.isActive !== filters.isActive)  return false;
+      if (filters.branchId !== undefined && s.branchId !== filters.branchId) return false;
+      if (filters.forRole  !== undefined && s.forRole  !== filters.forRole)  return false;
+      if (filters.isActive !== undefined && s.isActive !== filters.isActive) return false;
       return true;
     });
   },
@@ -207,6 +210,7 @@ export const workSchedulePatternService = {
 
   create(dto: CreateWorkSchedulePatternDto): WorkSchedulePattern {
     if (!dto.nameTh?.trim())      throw new AppError(400, 'nameTh is required',              'VALIDATION_ERROR');
+    if (!dto.branchId)            throw new AppError(400, 'branchId is required',            'VALIDATION_ERROR');
     if (!dto.forRole)             throw new AppError(400, 'forRole is required',              'VALIDATION_ERROR');
     if (dto.monthlyWorkingHours == null) {
       throw new AppError(400, 'monthlyWorkingHours is required', 'VALIDATION_ERROR');
@@ -228,6 +232,7 @@ export const workSchedulePatternService = {
 
     const duplicate = store.exists(
       (s) =>
+        s.branchId === dto.branchId &&
         s.forRole === dto.forRole &&
         s.nameTh.toLowerCase() === dto.nameTh.trim().toLowerCase() &&
         s.isActive
@@ -235,7 +240,7 @@ export const workSchedulePatternService = {
     if (duplicate) {
       throw new AppError(
         409,
-        `WorkSchedulePattern '${dto.nameTh}' already exists for role '${dto.forRole}'`,
+        `WorkSchedulePattern '${dto.nameTh}' already exists for role '${dto.forRole}' in this branch`,
         'DUPLICATE'
       );
     }
@@ -243,6 +248,7 @@ export const workSchedulePatternService = {
     return store.create({
       nameTh:              dto.nameTh.trim(),
       nameEn:              dto.nameEn?.trim(),
+      branchId:            dto.branchId,
       forRole:             dto.forRole,
       type,
       monthlyWorkingHours: dto.monthlyWorkingHours,

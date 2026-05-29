@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   AttendanceRecord,
   Department,
   EditRequest,
@@ -8,7 +8,7 @@ import type {
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
-import { hasPermission } from '../../core/permissions';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 import type { UserRecord } from '../employees/employee.service';
 
 // ─── Repositories ─────────────────────────────────────────────────────────────
@@ -33,6 +33,7 @@ export interface EditRequestFilters {
   status?:       EditRequestStatus;
   from?:         string;  // createdAt >= from (YYYY-MM-DD)
   to?:           string;  // createdAt <= to
+  branchId?:     string;
 }
 
 // ─── Access helpers ───────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ function verifyAccessToAttendance(
   actorRole:   UserRole,
   attendanceRecord: AttendanceRecord,
 ): void {
-  if (hasPermission(actorRole, 'hr')) return;
+  if (hasHrAccess(actorRole)) return;
 
   const employee = employeeStore.findById(attendanceRecord.userId);
   if (!employee) throw new AppError(404, 'Employee not found', 'NOT_FOUND');
@@ -142,15 +143,24 @@ export const editRequestService = {
     actorRole:   UserRole,
     filters:     EditRequestFilters = {},
   ): EditRequest[] {
-    return editRequestStore.findAll((r) => {
-      // Scope: HR sees all; managers see only their own
-      if (!hasPermission(actorRole, 'hr') && r.requestedBy !== actorUserId) return false;
+    // Pre-compute branch-scoped attendance IDs to avoid per-record lookups
+    let branchAttIds: Set<string> | null = null;
+    if (filters.branchId) {
+      const branchEmpIds = new Set(
+        employeeStore.findAll((u) => u.branchId === filters.branchId).map((u) => u.id),
+      );
+      branchAttIds = new Set(
+        attendanceStore.findAll((a) => branchEmpIds.has(a.userId)).map((a) => a.id),
+      );
+    }
 
+    return editRequestStore.findAll((r) => {
+      if (!hasHrAccess(actorRole) && r.requestedBy !== actorUserId) return false;
       if (filters.attendanceId && r.attendanceId !== filters.attendanceId) return false;
       if (filters.status       && r.status       !== filters.status)       return false;
       if (filters.from && r.createdAt.slice(0, 10) < filters.from)         return false;
       if (filters.to   && r.createdAt.slice(0, 10) > filters.to)           return false;
-
+      if (branchAttIds && !branchAttIds.has(r.attendanceId))               return false;
       return true;
     }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
@@ -164,7 +174,7 @@ export const editRequestService = {
     if (!r) throw new AppError(404, 'Edit request not found', 'NOT_FOUND');
 
     // Managers can only see their own; HR can see all
-    if (!hasPermission(actorRole, 'hr') && r.requestedBy !== actorUserId) {
+    if (!hasHrAccess(actorRole) && r.requestedBy !== actorUserId) {
       throw new AppError(403, 'Access denied', 'FORBIDDEN');
     }
 
@@ -178,7 +188,7 @@ export const editRequestService = {
    * Merges requestedData into the attendance record and links editRequestId.
    */
   approve(id: string, actorUserId: string, actorRole: UserRole): EditRequest {
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       throw new AppError(403, 'Only HR can approve edit requests', 'FORBIDDEN');
     }
 
@@ -215,7 +225,7 @@ export const editRequestService = {
     actorUserId:  string,
     actorRole:    UserRole,
   ): EditRequest {
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       throw new AppError(403, 'Only HR can reject edit requests', 'FORBIDDEN');
     }
 

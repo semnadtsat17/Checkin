@@ -6,18 +6,24 @@ const BASE = '/api/attendance';
 // ── Check-in / Check-out ──────────────────────────────────────────────────────
 
 export interface CheckPayload {
-  lat?:   number;
-  lng?:   number;
-  photo?: File;
-  note?:  string;
+  lat?:                 number;
+  lng?:                 number;
+  photo?:               File;
+  note?:                string;
+  shiftCode?:           string;
+  checkoutLateReason?:  'forgot' | 'extra_work' | 'compensate' | 'ot';
+  claimedCheckOutTime?: string;   // HH:mm — user-stated actual checkout time (forgot case)
 }
 
 function buildFormData(payload: CheckPayload): FormData {
   const fd = new FormData();
-  if (payload.photo)              fd.append('photo', payload.photo);
-  if (payload.lat  !== undefined) fd.append('lat',  String(payload.lat));
-  if (payload.lng  !== undefined) fd.append('lng',  String(payload.lng));
-  if (payload.note)               fd.append('note', payload.note);
+  if (payload.photo)               fd.append('photo',              payload.photo);
+  if (payload.lat  !== undefined)  fd.append('lat',                String(payload.lat));
+  if (payload.lng  !== undefined)  fd.append('lng',                String(payload.lng));
+  if (payload.note)                fd.append('note',               payload.note);
+  if (payload.shiftCode)           fd.append('shiftCode',          payload.shiftCode);
+  if (payload.checkoutLateReason)  fd.append('checkoutLateReason', payload.checkoutLateReason);
+  if (payload.claimedCheckOutTime) fd.append('claimedCheckOutTime', payload.claimedCheckOutTime);
   return fd;
 }
 
@@ -75,6 +81,7 @@ export function getMySummary(month: string): Promise<MonthlySummary> {
 export interface AttendanceFilters {
   status?:   string;
   deptId?:   string;
+  branchId?: string;
   userId?:   string;
   from?:     string;
   to?:       string;
@@ -82,11 +89,12 @@ export interface AttendanceFilters {
 
 export function listAttendance(filters: AttendanceFilters = {}): Promise<AttendanceRecord[]> {
   const p = new URLSearchParams();
-  if (filters.status) p.set('status', filters.status);
-  if (filters.deptId) p.set('deptId', filters.deptId);
-  if (filters.userId) p.set('userId', filters.userId);
-  if (filters.from)   p.set('from',   filters.from);
-  if (filters.to)     p.set('to',     filters.to);
+  if (filters.status)   p.set('status',   filters.status);
+  if (filters.deptId)   p.set('deptId',   filters.deptId);
+  if (filters.branchId) p.set('branchId', filters.branchId);
+  if (filters.userId)   p.set('userId',   filters.userId);
+  if (filters.from)     p.set('from',     filters.from);
+  if (filters.to)       p.set('to',       filters.to);
   const qs = p.toString() ? `?${p}` : '';
   return apiFetch<AttendanceRecord[]>(`${BASE}${qs}`);
 }

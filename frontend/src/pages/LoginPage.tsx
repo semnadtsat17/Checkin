@@ -24,18 +24,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email.trim(), password);
+      const result = await login(email.trim(), password);
 
-      // Determine redirect based on role stored in context
-      // We re-read from localStorage because state may not have updated yet
-      const stored = localStorage.getItem('auth_user');
-      const user   = stored ? JSON.parse(stored) : null;
-      const level  = user ? ROLE_LEVEL[user.role as keyof typeof ROLE_LEVEL] : 0;
+      if (result.needsBranchSelect) {
+        navigate('/select-branch', { replace: true });
+        return;
+      }
 
+      if (result.mustChangePassword) {
+        navigate('/change-password', { replace: true });
+        return;
+      }
+
+      const level = ROLE_LEVEL[result.role as keyof typeof ROLE_LEVEL] ?? 0;
       if (from) {
         navigate(from, { replace: true });
       } else if (level <= 2) {
-        navigate('/checkin', { replace: true });
+        navigate('/employee-dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }

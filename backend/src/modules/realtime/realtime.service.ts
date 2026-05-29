@@ -1,4 +1,4 @@
-/**
+﻿/**
  * realtime.service.ts
  *
  * In-process SSE client registry.
@@ -77,7 +77,7 @@ function emitToRoles(roles: string[], event: string, data: unknown, id?: string)
  */
 export function emitApprovalCreated(record: AttendanceApprovalRecord): void {
   try {
-    emitToRoles(['manager', 'hr', 'super_admin'], 'approval_created', record, record.id);
+    emitToRoles(['super_admin', 'admin', 'hr_branch', 'manager'], 'approval_created', record, record.id);
   } catch { /* never propagate */ }
 }
 
@@ -88,7 +88,7 @@ export function emitApprovalCreated(record: AttendanceApprovalRecord): void {
  */
 export function emitApprovalUpdated(record: AttendanceApprovalRecord): void {
   try {
-    emitToRoles(['manager', 'hr', 'super_admin'], 'approval_updated', record, record.id);
+    emitToRoles(['super_admin', 'admin', 'hr_branch', 'manager'], 'approval_updated', record, record.id);
     emitToUser(record.employeeId, 'approval_updated', record, record.id);
   } catch { /* never propagate */ }
 }

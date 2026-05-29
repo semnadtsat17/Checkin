@@ -1,12 +1,12 @@
-/**
- * ApprovalsPage — Manager reviews pending_approval attendance records.
+﻿/**
+ * ApprovalsPage โ€” Manager reviews pending_approval attendance records.
  *
  * An employee who checks in without a scheduled shift gets status=pending_approval.
  * The manager sees each record with: employee name, date, check-in time,
  * check-in photo, GPS coordinates, and Approve / Reject actions.
  */
 import { useCallback, useEffect, useState } from 'react';
-import type { AttendanceRecord, User } from '@hospital-hr/shared';
+import type { AttendanceRecord, Branch, Department, UserProfile } from '@hospital-hr/shared';
 import {
   listAttendance,
   approveAttendance,
@@ -15,15 +15,16 @@ import {
 } from '../../api/attendance';
 import { employeeApi } from '../../api/employees';
 import { deptApi } from '../../api/departments';
-import type { Department } from '@hospital-hr/shared';
+import { branchApi } from '../../api/branches';
+import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/useTranslation';
 import { PageSpinner } from '../../components/Spinner';
 import { Modal } from '../../components/ui/Modal';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Helpers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function fmtDateTime(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return 'โ€”';
   return new Date(iso).toLocaleString('th-TH', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -36,19 +37,19 @@ function fmtDate(iso: string): string {
   });
 }
 
-// ─── Lazy photo viewer ────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Lazy photo viewer โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 //
-// Rule: images must NOT load until the user explicitly requests them.
+// Rule: images must NOT load until the UserProfile explicitly requests them.
 // The src URL is only assigned to an <img> element after the modal opens,
 // so the browser never issues a network request for the photo on list render.
 
 function PhotoThumb({ src, label }: { src: string | null; label: string }) {
   const [open, setOpen] = useState(false);
-  if (!src) return <span className="text-xs text-gray-300">— ไม่มีรูป</span>;
+  if (!src) return <span className="text-xs text-gray-300">โ€” ไม่มีรูป</span>;
 
   return (
     <>
-      {/* Button replaces the eager thumbnail — no <img> rendered here */}
+      {/* Button replaces the eager thumbnail โ€” no <img> rendered here */}
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -75,7 +76,7 @@ function PhotoThumb({ src, label }: { src: string | null; label: string }) {
   );
 }
 
-// ─── Record card ─────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Record card โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function ApprovalCard({
   record,
@@ -85,7 +86,7 @@ function ApprovalCard({
   actionPending,
 }: {
   record:        AttendanceRecord;
-  employeeMap:   Map<string, User>;
+  employeeMap:   Map<string, UserProfile>;
   onApprove:     (id: string) => void;
   onReject:      (id: string) => void;
   actionPending: boolean;
@@ -174,24 +175,28 @@ function ApprovalCard({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Page โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 export default function ApprovalsPage() {
-  const { t } = useTranslation();
+  const { t }    = useTranslation();
+  const { user } = useAuth();
 
-  const [records,     setRecords]     = useState<AttendanceRecord[]>([]);
-  const [employeeMap, setEmployeeMap] = useState<Map<string, User>>(new Map());
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [deptId,      setDeptId]      = useState('');
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState('');
-  const [pending,     setPending]     = useState<Set<string>>(new Set());
+  const isSuperAdmin = user?.role === 'super_admin';
 
-  // Load employees + departments once
+  const [records,       setRecords]       = useState<AttendanceRecord[]>([]);
+  const [employeeMap,   setEmployeeMap]   = useState<Map<string, UserProfile>>(new Map());
+  const [departments,   setDepartments]   = useState<Department[]>([]);
+  const [branches,      setBranches]      = useState<Branch[]>([]);
+  const [deptId,        setDeptId]        = useState('');
+  const [filterBranchId, setFilterBranchId] = useState('');
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState('');
+  const [pending,       setPending]       = useState<Set<string>>(new Set());
+
   useEffect(() => {
     employeeApi.list({ pageSize: 500 })
       .then(r => {
-        const map = new Map<string, User>();
+        const map = new Map<string, UserProfile>();
         r.items.forEach(e => map.set(e.id, e));
         setEmployeeMap(map);
       })
@@ -199,15 +204,19 @@ export default function ApprovalsPage() {
     deptApi.list({ pageSize: 200 })
       .then(r => setDepartments(r.items))
       .catch(() => {});
-  }, []);
+    if (isSuperAdmin) {
+      branchApi.list().then(setBranches).catch(() => {});
+    }
+  }, [isSuperAdmin]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const data = await listAttendance({
-        status: 'pending_approval',
-        ...(deptId ? { deptId } : {}),
+        status:   'pending_approval',
+        ...(deptId         ? { deptId }         : {}),
+        ...(filterBranchId ? { branchId: filterBranchId } : {}),
       });
       setRecords(data);
     } catch (e) {
@@ -215,7 +224,7 @@ export default function ApprovalsPage() {
     } finally {
       setLoading(false);
     }
-  }, [deptId, t]);
+  }, [deptId, filterBranchId, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -252,12 +261,24 @@ export default function ApprovalsPage() {
           <p className="text-sm text-gray-400 mt-0.5">การลงเวลานอกตารางงาน รอการอนุมัติจากหัวหน้า</p>
         </div>
         <div className="flex items-center gap-2">
+          {isSuperAdmin && branches.length > 0 && (
+            <select
+              value={filterBranchId}
+              onChange={e => { setFilterBranchId(e.target.value); setDeptId(''); }}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+            >
+              <option value="">— ทุกสาขา —</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>{b.nameTh}</option>
+              ))}
+            </select>
+          )}
           <select
             value={deptId}
             onChange={e => setDeptId(e.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
           >
-            <option value="">— ทุกแผนก —</option>
+            <option value="">โ€” ทุกแผนก โ€”</option>
             {departments.map(d => (
               <option key={d.id} value={d.id}>{d.nameTh}</option>
             ))}
@@ -280,7 +301,7 @@ export default function ApprovalsPage() {
         <PageSpinner />
       ) : records.length === 0 ? (
         <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
-          <p className="text-2xl mb-2">✓</p>
+          <p className="text-2xl mb-2">โ“</p>
           <p className="text-sm text-gray-500">ไม่มีรายการรออนุมัติ</p>
         </div>
       ) : (
@@ -300,3 +321,4 @@ export default function ApprovalsPage() {
     </div>
   );
 }
+

@@ -145,12 +145,16 @@ function DeptForm({
 export default function DepartmentsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isHR = user ? ROLE_LEVEL[user.role] >= 4 : false;
+  const isHR         = user ? ROLE_LEVEL[user.role] >= 4 : false;
+  const isSuperAdmin  = user?.role === 'super_admin' || user?.role === 'admin';
 
   const [items,   setItems]   = useState<Department[]>([]);
   const [total,   setTotal]   = useState(0);
   const [page,    setPage]    = useState(1);
   const [search,  setSearch]  = useState('');
+  const [filterBranchId, setFilterBranchId] = useState<string>(
+    isSuperAdmin ? '' : (user?.branchId ?? ''),
+  );
   const [loading, setLoading] = useState(true);
 
   const [branches,              setBranches]              = useState<Branch[]>([]);
@@ -164,12 +168,17 @@ export default function DepartmentsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await deptApi.list({ search: search || undefined, page, pageSize: PAGE_SIZE });
+      const res = await deptApi.list({
+        search:   search         || undefined,
+        branchId: filterBranchId || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      });
       setItems(res.items);
       setTotal(res.total);
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  }, [search, page]);
+  }, [search, filterBranchId, page]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -213,14 +222,24 @@ export default function DepartmentsPage() {
         )}
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap gap-3">
         <input
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
           placeholder={`${t('common.search')}...`}
-          className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+          className="w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
         />
+        {isSuperAdmin && branches.length > 0 && (
+          <select
+            value={filterBranchId}
+            onChange={e => { setFilterBranchId(e.target.value); setPage(1); }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+          >
+            <option value="">{t('common.all')} ({t('nav.branches')})</option>
+            {branches.map(b => <option key={b.id} value={b.id}>{b.nameTh}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Table */}

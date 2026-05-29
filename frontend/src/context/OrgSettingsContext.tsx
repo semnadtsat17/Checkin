@@ -1,17 +1,8 @@
 /**
  * OrgSettingsContext
  *
- * Fetches /org-settings ONCE after the user authenticates.
- * Every component that reads feature flags calls useOrgSettings() —
- * no repeated requests, no prop-drilling.
- *
- * The context value also exposes `refetch()` so the super-admin panel
- * can invalidate after a PATCH without reloading the page.
- *
- * Fallback behavior:
- *   If the API call fails (network error, 5xx), ORG_SETTINGS_DEFAULTS
- *   is used. Defaults are identical to current production behavior,
- *   so a failed fetch is invisible to regular users.
+ * Fetches per-branch settings once after the user authenticates.
+ * Every component that reads feature flags calls useOrgSettings().
  */
 import React, {
   createContext,
@@ -30,7 +21,6 @@ import { useAuth } from './AuthContext';
 // ─── Context shape ────────────────────────────────────────────────────────────
 
 interface OrgSettingsContextValue extends OrgSettingsConfig {
-  /** Re-fetch settings from the server (call after a PATCH /org-settings). */
   refetch: () => void;
 }
 
@@ -42,26 +32,25 @@ const OrgSettingsContext = createContext<OrgSettingsContextValue>({
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function OrgSettingsProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [settings, setSettings] = useState<OrgSettingsConfig>(ORG_SETTINGS_DEFAULTS);
 
-  const load = useCallback(() => {
-    getOrgSettings()
-      .then(setSettings)
+  const load = useCallback((branchId: string) => {
+    getOrgSettings(branchId)
+      .then((s) => setSettings({ ...s, superAdminEnabled: user?.role === 'super_admin' || user?.role === 'admin' }))
       .catch(() => setSettings(ORG_SETTINGS_DEFAULTS));
-  }, []);
+  }, [user?.role]);
 
-  // Fetch when user authenticates; reset to defaults on logout.
   useEffect(() => {
-    if (isAuthenticated) {
-      load();
+    if (isAuthenticated && user?.branchId) {
+      load(user.branchId);
     } else {
       setSettings(ORG_SETTINGS_DEFAULTS);
     }
-  }, [isAuthenticated, load]);
+  }, [isAuthenticated, user?.branchId, load]);
 
   return (
-    <OrgSettingsContext.Provider value={{ ...settings, refetch: load }}>
+    <OrgSettingsContext.Provider value={{ ...settings, refetch: () => user?.branchId && load(user.branchId) }}>
       {children}
     </OrgSettingsContext.Provider>
   );

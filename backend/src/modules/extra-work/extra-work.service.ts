@@ -1,8 +1,8 @@
-import type { ExtraWork, ExtraWorkReason, UserRole } from '@hospital-hr/shared';
+﻿import type { ExtraWork, ExtraWorkReason, UserRole } from '@hospital-hr/shared';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
-import { hasPermission } from '../../core/permissions';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 import type { UserRecord } from '../employees/employee.service';
 import { scheduleService } from '../schedules/schedule.service';
 import { assertNotSimpleMode } from '../attendance/guards/simpleMode.guard';
@@ -149,7 +149,7 @@ function assertNoWorkingTimeOverlap(
 
 /** Verify the actor manages the given department (or is HR+). */
 function requireDeptAccess(actorRole: UserRole, actorUserId: string, departmentId: string): void {
-  if (hasPermission(actorRole, 'hr')) return;
+  if (hasHrAccess(actorRole)) return;
   const actor = employeeStore.findById(actorUserId);
   const managed = new Set(actor?.managerDepartments ?? []);
   if (!managed.has(departmentId)) {
@@ -172,7 +172,7 @@ export const extraWorkService = {
   ): ExtraWork[] {
     let allowedDepts: Set<string> | null = null;
 
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       const actor = employeeStore.findById(actorUserId);
       allowedDepts = new Set(actor?.managerDepartments ?? []);
 

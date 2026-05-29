@@ -5,10 +5,11 @@ import { holidayService } from './holiday.service';
 // ── Holiday Types ─────────────────────────────────────────────────────────────
 
 export async function listTypes(
-  _req: Request, res: Response, next: NextFunction,
+  req: Request, res: Response, next: NextFunction,
 ): Promise<void> {
   try {
-    ok(res, holidayService.listTypes());
+    const branchId = (req.query.branchId as string | undefined) ?? req.user?.branchId;
+    ok(res, holidayService.listTypes(branchId));
   } catch (err) { next(err); }
 }
 
@@ -16,7 +17,8 @@ export async function createType(
   req: Request, res: Response, next: NextFunction,
 ): Promise<void> {
   try {
-    created(res, holidayService.createType(req.body, req.user!.role));
+    const dto = { ...req.body, branchId: req.body.branchId ?? req.user!.branchId };
+    created(res, holidayService.createType(dto, req.user!.role));
   } catch (err) { next(err); }
 }
 

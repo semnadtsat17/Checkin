@@ -93,7 +93,8 @@
     "settings": "Settings",
     "profile": "Profile",
     "notifications": "Notifications",
-    "help": "Help"
+    "help": "Help",
+    "shiftTransfer": "Shift Transfer"
   },
   "roles": {
     "super_admin": "Super Admin",
@@ -306,15 +307,20 @@
     "request": "Request Leave",
     "list": "Leave List",
     "approve": "Approve",
+    "approveManager": "Approve (1st stage)",
+    "approveHR": "Approve (HR)",
     "reject": "Reject",
     "type": "Leave Type",
     "types": {
-      "sick": "Sick Leave",
-      "personal": "Personal Leave",
-      "annual": "Annual Leave",
-      "maternity": "Maternity Leave",
-      "ordain": "Ordination Leave",
-      "other": "Other"
+      "SICK": "Sick Leave",
+      "VACATION": "Annual Leave",
+      "PERSONAL": "Personal Leave",
+      "OTHER": "Other"
+    },
+    "durationType": "Leave Duration",
+    "durationTypes": {
+      "FULL_DAY": "Full Day",
+      "HALF_DAY": "Half Day"
     },
     "startDate": "Start Date",
     "endDate": "End Date",
@@ -323,12 +329,18 @@
     "document": "Supporting Document",
     "status": {
       "pending": "Pending",
-      "approved": "Approved",
+      "manager_approved": "Manager Approved",
+      "hr_approved": "Approved",
       "rejected": "Rejected"
     },
+    "rejectReason": "Rejection Reason",
     "balance": "Leave Balance",
     "used": "Leave Used",
-    "requestSuccess": "Leave request submitted"
+    "noRequests": "No leave requests",
+    "requestSuccess": "Leave request submitted",
+    "approveManagerSuccess": "First-stage approval done",
+    "approveHRSuccess": "Approved successfully",
+    "rejectSuccess": "Leave request rejected"
   },
   "editRequest": {
     "title": "Time Edit Requests",

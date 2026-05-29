@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { authenticate } from '../../shared/middleware/auth';
 import { requireRole } from '../../shared/middleware/requireRole';
 import * as ctrl from './edit-request.controller';
@@ -13,7 +13,7 @@ router.get('/',     requireRole('manager'), ctrl.list);
 router.get('/:id',  requireRole('manager'), ctrl.getOne);
 
 // HR only — approve / reject
-router.patch('/:id/approve', requireRole('hr'), ctrl.approve);
-router.patch('/:id/reject',  requireRole('hr'), ctrl.reject);
+router.patch('/:id/approve', requireRole(['admin', 'hr_branch']), ctrl.approve);
+router.patch('/:id/reject',  requireRole(['admin', 'hr_branch']), ctrl.reject);
 
 export default router;

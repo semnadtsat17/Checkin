@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { WorkSchedulePattern, WorkSchedulePatternShift, User, Department, ScheduleDay, ExtraWork, ExtraWorkReason, HolidayDate } from '@hospital-hr/shared';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { WorkSchedulePattern, WorkSchedulePatternShift, UserProfile, Department, ScheduleDay, ExtraWork, ExtraWorkReason, HolidayDate, Branch } from '@hospital-hr/shared';
 import { ROLE_LEVEL } from '@hospital-hr/shared';
 import { useTranslation } from '../../i18n/useTranslation';
 import { useAuth } from '../../context/AuthContext';
@@ -7,6 +7,7 @@ import { scheduleApi, type ScheduleDayDto, type UpsertWeekDto, type ScheduleDayR
 import { workSchedulePatternApi } from '../../api/subRoles';
 import { employeeApi } from '../../api/employees';
 import { deptApi } from '../../api/departments';
+import { branchApi } from '../../api/branches';
 import { extraWorkApi, type CreateExtraWorkDto, type UpdateExtraWorkDto } from '../../api/extraWork';
 import { holidaysApi } from '../../api/holidays';
 import { invalidateScheduleCache } from '../../modules/schedule/scheduleInvalidator';
@@ -46,8 +47,8 @@ function normalizeDay(day: ScheduleDayDto): ScheduleDayDto {
 
 /**
  * Merge a new shift code into an existing day, preventing duplicates.
- * - 1 resulting code  → { shiftCode }
- * - 2+ resulting codes → { shiftCodes }
+ * - 1 resulting code  โ’ { shiftCode }
+ * - 2+ resulting codes โ’ { shiftCodes }
  * - Always sets isDayOff: false (callers must NOT call this for day-off / clear)
  */
 function mergeShift(
@@ -77,7 +78,7 @@ function mergeShift(
 }
 
 /**
- * 🔒 SCHEDULE WRITE LOCK
+ * ๐”’ SCHEDULE WRITE LOCK
  *
  * NEVER write to draft.days directly for shift-code assignment.
  * ALWAYS use assignShiftToDraft().
@@ -95,12 +96,12 @@ function assignShiftToDraft(
 }
 
 /**
- * Pure immutable engine — applies one or more cell assignments to a draft map.
+ * Pure immutable engine โ€” applies one or more cell assignments to a draft map.
  *
  * Write routing:
- *   isDayOff | shiftCode=null       → normalizeDay overwrite  (day-off / clear)
- *   shiftCodes array present        → normalizeDay overwrite  (modal exact-list)
- *   single shiftCode (no array)     → assignShiftToDraft       (paint / drag MERGE)
+ *   isDayOff | shiftCode=null       โ’ normalizeDay overwrite  (day-off / clear)
+ *   shiftCodes array present        โ’ normalizeDay overwrite  (modal exact-list)
+ *   single shiftCode (no array)     โ’ assignShiftToDraft       (paint / drag MERGE)
  *
  * Defined OUTSIDE the component so it is safe to call from useEffect([]) closures.
  */
@@ -119,16 +120,16 @@ function applyShiftsToDraft(
     const week = structuredClone(next.get(weekKey) ?? seedWeek(userId, weekStart, flat));
 
     if (dto.isDayOff) {
-      // Explicit day-off — intentional overwrite
+      // Explicit day-off โ€” intentional overwrite
       week.days[date] = normalizeDay(dto);
     } else if (dto.shiftCodes && dto.shiftCodes.length > 0) {
-      // Exact code list from modal checkbox picker — takes priority over shiftCode===null
+      // Exact code list from modal checkbox picker โ€” takes priority over shiftCode===null
       week.days[date] = normalizeDay(dto);
     } else if (dto.shiftCode === null) {
-      // Clear (no codes, no day-off) — intentional overwrite
+      // Clear (no codes, no day-off) โ€” intentional overwrite
       week.days[date] = normalizeDay(dto);
     } else {
-      // Single code from paint-mode click or drag — merge via write lock (dedup, no overwrite)
+      // Single code from paint-mode click or drag โ€” merge via write lock (dedup, no overwrite)
       assignShiftToDraft(week, date, dto.shiftCode);
     }
 
@@ -139,8 +140,8 @@ function applyShiftsToDraft(
 
 /**
  * Build a complete UpsertWeekDto pre-populated from already-loaded schedule data.
- * Called once the first time a user touches a cell in a given week, so the payload
- * always contains ALL days for that week — not just the one being changed.
+ * Called once the first time a UserProfile touches a cell in a given week, so the payload
+ * always contains ALL days for that week โ€” not just the one being changed.
  */
 function seedWeek(
   userId: string,
@@ -150,7 +151,7 @@ function seedWeek(
   const days: Record<string, ScheduleDayDto> = {};
   for (const d of getWeekDates(weekStart)) {
     const existing = flat[userId]?.[d];
-    // Only seed days that have a real assignment — skip null-shift non-dayOff entries
+    // Only seed days that have a real assignment โ€” skip null-shift non-dayOff entries
     if (existing && (existing.isDayOff || existing.shiftCode !== null || (existing.shiftCodes?.length ?? 0) > 0)) {
       days[d] = normalizeDay({
         shiftCode:  existing.shiftCode ?? null,
@@ -173,7 +174,7 @@ function getMonthDays(month: string): string[] {
 
 const TH_DOW_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ helpers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 /** Extract the effective list of shift codes from a cell value */
 function getCodes(cell: ScheduleDay | ScheduleDayDto | null): string[] {
@@ -182,7 +183,7 @@ function getCodes(cell: ScheduleDay | ScheduleDayDto | null): string[] {
   return cell.shiftCode ? [cell.shiftCode] : [];
 }
 
-// ─── Cell badge ────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Cell badge โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function CellBadge({
   cell,
@@ -192,12 +193,12 @@ function CellBadge({
 }: {
   cell:      ScheduleDay | ScheduleDayDto | null;
   isPending: boolean;
-  /** Department shift definitions — used to sort badges by startTime ascending. */
+  /** Department shift definitions โ€” used to sort badges by startTime ascending. */
   shifts?:   WorkSchedulePatternShift[];
-  /** Calendar date (YYYY-MM-DD) — enables absolute-time sort order. */
+  /** Calendar date (YYYY-MM-DD) โ€” enables absolute-time sort order. */
   date?:     string;
 }) {
-  if (!cell) return <span className="text-xs text-gray-200">—</span>;
+  if (!cell) return <span className="text-xs text-gray-200">โ€”</span>;
 
   if (cell.isDayOff) {
     return (
@@ -210,10 +211,10 @@ function CellBadge({
   }
 
   const codes = getCodes(cell);
-  if (codes.length === 0) return <span className="text-xs text-gray-200">—</span>;
+  if (codes.length === 0) return <span className="text-xs text-gray-200">โ€”</span>;
 
   // Sort by absolute start time using normalizeHhmm so cross-midnight shifts
-  // always appear after same-day shifts (e.g. N 20:00→04:00 sorts after D 08:00).
+  // always appear after same-day shifts (e.g. N 20:00โ’04:00 sorts after D 08:00).
   const shiftMap = new Map(shifts.map((s) => [s.code, s]));
   function sortValue(code: string): number {
     const s = shiftMap.get(code);
@@ -221,7 +222,7 @@ function CellBadge({
     if (date) {
       return normalizeHhmm(date, s.startTime, s.endTime, 'SHIFT').start.getTime();
     }
-    // Fallback when date is unknown — heuristic identical to absolute sort.
+    // Fallback when date is unknown โ€” heuristic identical to absolute sort.
     const [h, m] = s.startTime.split(':').map(Number);
     return h * 60 + m + (s.isOvernight ? 1440 : 0);
   }
@@ -242,7 +243,7 @@ function CellBadge({
   );
 }
 
-// ─── Shift picker modal (multi-select checkbox) ────────────────────────────────
+// โ”€โ”€โ”€ Shift picker modal (multi-select checkbox) โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function ShiftPickerModal({
   date,
@@ -312,7 +313,7 @@ function ShiftPickerModal({
                     {shift.code}
                   </span>
                   <span className="flex-1 text-sm text-gray-800">{shift.nameTh}</span>
-                  <span className="text-xs text-gray-400">{shift.startTime}–{shift.endTime}</span>
+                  <span className="text-xs text-gray-400">{shift.startTime}โ€“{shift.endTime}</span>
                 </label>
               );
             })}
@@ -347,7 +348,7 @@ function ShiftPickerModal({
           </button>
         </div>
 
-        {/* ── Extra work section ── */}
+        {/* โ”€โ”€ Extra work section โ”€โ”€ */}
         <div className="my-3 flex items-center gap-2">
           <div className="h-px flex-1 bg-gray-100" />
           <span className="text-[11px] text-gray-400">หรือ</span>
@@ -371,7 +372,7 @@ function ShiftPickerModal({
   );
 }
 
-// ─── Extra Work badge ──────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Extra Work badge โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function ExtraWorkBadge({ ew, onClick }: { ew: ExtraWork; onClick: () => void }) {
   const labelMap: Record<ExtraWorkReason, string> = {
@@ -380,15 +381,15 @@ function ExtraWorkBadge({ ew, onClick }: { ew: ExtraWork; onClick: () => void })
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      title={`${ew.startTime}–${ew.endTime} (${ew.customReason ?? labelMap[ew.reason]})`}
+      title={`${ew.startTime}โ€“${ew.endTime} (${ew.customReason ?? labelMap[ew.reason]})`}
       className="mt-0.5 w-full rounded border border-dashed border-emerald-400 bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100 leading-tight"
     >
-      {labelMap[ew.reason]} {ew.startTime}–{ew.endTime}
+      {labelMap[ew.reason]} {ew.startTime}โ€“{ew.endTime}
     </button>
   );
 }
 
-// ─── Extra Work Modal ──────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Extra Work Modal โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 const EXTRA_WORK_REASONS: { value: ExtraWorkReason; labelTh: string }[] = [
   { value: 'ot',         labelTh: 'ทำงานล่วงเวลา (OT)' },
@@ -410,8 +411,8 @@ function ExtraWorkModal({
   onClose,
 }: {
   departmentId:      string;
-  employees:         User[];
-  /** All extra-work entries for this department+month — used for overlap detection. */
+  employees:         UserProfile[];
+  /** All extra-work entries for this department+month โ€” used for overlap detection. */
   extraWorks:        ExtraWork[];
   initial:           ExtraWork | null;   // null = create mode
   defaultEmployeeId?: string;            // pre-fill when creating from a cell
@@ -433,7 +434,7 @@ function ExtraWorkModal({
 
   /**
    * One month of resolved calendar days for the selected employee.
-   * Fetched once per (uid + month) — includes DRAFT shift records so
+   * Fetched once per (uid + month) โ€” includes DRAFT shift records so
    * OT validation blocks against shifts the manager has assigned but
    * not yet published.  Re-fetched automatically when uid or month changes.
    */
@@ -459,14 +460,14 @@ function ExtraWorkModal({
   }, [employeeId, date, initial?.employeeId]);
 
   /**
-   * Employee's complete busy timeline — all shifts + all OT entries (excl. self),
+   * Employee's complete busy timeline โ€” all shifts + all OT entries (excl. self),
    * as merged absolute TimeRange[].
    *
    * buildEmployeeBusyTimeline:
-   *   • Converts every resolved day's shifts to absolute TimeRanges via normalizeHhmm.
-   *   • Cross-midnight shifts naturally extend into the next calendar day —
+   *   โ€ข Converts every resolved day's shifts to absolute TimeRanges via normalizeHhmm.
+   *   โ€ข Cross-midnight shifts naturally extend into the next calendar day โ€”
    *     no sliceRangeByDay or prevDay injection needed.
-   *   • OT entries are anchored to their own date; cross-date conflicts are handled
+   *   โ€ข OT entries are anchored to their own date; cross-date conflicts are handled
    *     by the same absolute-overlap math.
    *
    * Future leave: add leave ranges inside buildEmployeeBusyTimeline params when ready.
@@ -483,13 +484,13 @@ function ExtraWorkModal({
     [resolvedCalendar, extraWorks, employeeId, initial?.employeeId, initial?.id]
   );
 
-  /** Engine instance — recomputed only when date or busy timeline changes. */
+  /** Engine instance โ€” recomputed only when date or busy timeline changes. */
   const engine = useMemo(
     () => computeAllowedTimeRanges(date, busyTimeline),
     [date, busyTimeline]
   );
 
-  /** End-slot list for the current startTime — updates on every startTime change. */
+  /** End-slot list for the current startTime โ€” updates on every startTime change. */
   const currentEndSlots = useMemo(
     () => (startTime ? engine.endSlots(startTime) : NO_START_END_SLOTS),
     [engine, startTime]
@@ -580,7 +581,7 @@ function ExtraWorkModal({
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Employee — only in create mode */}
+          {/* Employee โ€” only in create mode */}
           {!isEdit && (
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-700">พนักงาน</label>
@@ -590,7 +591,7 @@ function ExtraWorkModal({
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
                 required
               >
-                <option value="">— เลือกพนักงาน —</option>
+                <option value="">โ€” เลือกพนักงาน โ€”</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.firstNameTh} {emp.lastNameTh}
@@ -638,7 +639,7 @@ function ExtraWorkModal({
           {/* Duration preview */}
           {otDuration(startTime, endTime) && (
             <p className="text-xs text-primary-600">
-              ⏱ รวม {otDuration(startTime, endTime)}
+              โฑ รวม {otDuration(startTime, endTime)}
             </p>
           )}
           {/* Show blocked working-time info from resolved calendar */}
@@ -647,19 +648,19 @@ function ExtraWorkModal({
             if (!day || day.isDayOff) return null;
             const ranges: { label: string }[] = [];
             if (day.weeklyTime && !day.isDayOff) {
-              ranges.push({ label: `${day.weeklyTime.startTime}–${day.weeklyTime.endTime}` });
+              ranges.push({ label: `${day.weeklyTime.startTime}โ€“${day.weeklyTime.endTime}` });
             }
             day.shifts.forEach((s) => {
-              if (s.startTime && s.endTime) ranges.push({ label: `${s.startTime}–${s.endTime}` });
+              if (s.startTime && s.endTime) ranges.push({ label: `${s.startTime}โ€“${s.endTime}` });
             });
             if (ranges.length === 0) return null;
             return (
               <p className="text-xs text-amber-600">
-                ⚠ ช่วงเวลางานหลัก{' '}
+                โ  ช่วงเวลางานหลัก{' '}
                 {ranges.map((r, i) => (
                   <span key={i}>{r.label}{i < ranges.length - 1 ? ', ' : ''}</span>
                 ))}{' '}
-                — ตัวเลือกในช่วงนั้นถูกปิดไว้
+                โ€” ตัวเลือกในช่วงนั้นถูกปิดไว้
               </p>
             );
           })()}
@@ -711,7 +712,7 @@ function ExtraWorkModal({
             </button>
           </div>
 
-          {/* Delete button — edit mode only */}
+          {/* Delete button โ€” edit mode only */}
           {isEdit && (
             confirmDelete ? (
               <div className="flex gap-2">
@@ -747,27 +748,30 @@ function ExtraWorkModal({
   );
 }
 
-// ─── Holiday cell components ───────────────────────────────────────────────────
+// โ”€โ”€โ”€ Holiday cell components โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
-// ─── Page ──────────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Page โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 export default function SchedulesPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isManager  = user?.role === 'manager';
-  const isHRRole   = user ? ROLE_LEVEL[user.role] >= 4 : false;
+  const isManager    = user?.role === 'manager';
+  const isHRRole     = user ? ROLE_LEVEL[user.role] >= 4 : false;
+  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'admin';
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  const [month,       setMonth]       = useState(() => toLocalIso(new Date()).slice(0, 7));
-  const [deptId,      setDeptId]      = useState('');
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [employees,   setEmployees]   = useState<User[]>([]);
+  // โ”€โ”€ State โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+  const [month,          setMonth]          = useState(() => toLocalIso(new Date()).slice(0, 7));
+  const [filterBranchId, setFilterBranchId] = useState<string>(isSuperAdmin ? '' : (user?.branchId ?? ''));
+  const [branches,       setBranches]       = useState<Branch[]>([]);
+  const [deptId,         setDeptId]         = useState('');
+  const [departments,    setDepartments]    = useState<Department[]>([]);
+  const [employees,   setEmployees]   = useState<UserProfile[]>([]);
   const [subRoles,    setSubRoles]    = useState<WorkSchedulePattern[]>([]);
   const [schedules,   setSchedules]   = useState<ScheduleDayRecord[]>([]);
 
-  /** Complete week records being edited: `userId::weekStart` → UpsertWeekDto (single source of truth) */
+  /** Complete week records being edited: `userId::weekStart` โ’ UpsertWeekDto (single source of truth) */
   const [draftWeeks,   setDraftWeeks]   = useState<Map<string, UpsertWeekDto>>(new Map());
-  /** Cells the user has manually touched — drives the amber highlight + pending count */
+  /** Cells the UserProfile has manually touched โ€” drives the amber highlight + pending count */
   const [touchedCells, setTouchedCells] = useState<Set<string>>(new Set());
 
   const [subRoleFilter, setSubRoleFilter] = useState('');
@@ -775,7 +779,7 @@ export default function SchedulesPage() {
   /** Holiday dates for the selected department's holiday policy (enabled only). */
   const [holidayDates, setHolidayDates] = useState<HolidayDate[]>([]);
 
-  /** Active paint-mode shift — when set, clicking a cell stamps it immediately */
+  /** Active paint-mode shift โ€” when set, clicking a cell stamps it immediately */
   const [activeShift, setActiveShift] = useState<ScheduleDayDto | null>(null);
 
   const [editCell, setEditCell] = useState<{ userId: string; date: string } | null>(null);
@@ -785,15 +789,15 @@ export default function SchedulesPage() {
 
   const today = useMemo(() => toLocalIso(new Date()), []);
 
-  // ── Publish state ──────────────────────────────────────────────────────────
+  // โ”€โ”€ Publish state โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   const [publishing,   setPublishing]   = useState(false);
   const [publishMsg,   setPublishMsg]   = useState<{ ok: boolean; text: string } | null>(null);
 
   /**
    * Publish-readiness from the backend.
-   *   changedFromPublished  — there are saved draft rows; Publish should be enabled.
-   *   alreadyPublished      — nothing new to publish; button shows "เผยแพร่แล้ว".
-   *   null                  — not yet loaded (dept/month not selected, or loading).
+   *   changedFromPublished  โ€” there are saved draft rows; Publish should be enabled.
+   *   alreadyPublished      โ€” nothing new to publish; button shows "เผยแพร่แล้ว".
+   *   null                  โ€” not yet loaded (dept/month not selected, or loading).
    */
   const [publishStatus, setPublishStatus] = useState<{
     scheduleChanged:      boolean;
@@ -802,14 +806,14 @@ export default function SchedulesPage() {
     alreadyPublished:     boolean;
   } | null>(null);
 
-  // ── Extra work ─────────────────────────────────────────────────────────────
+  // โ”€โ”€ Extra work โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   const [extraWorks,        setExtraWorks]        = useState<ExtraWork[]>([]);
   const [ewEdit,            setEwEdit]            = useState<ExtraWork | null>(null); // null = create
   const [showEWModal,       setShowEWModal]        = useState(false);
   const [ewPrefillEmployee, setEwPrefillEmployee]  = useState('');
   const [ewPrefillDate,     setEwPrefillDate]      = useState('');
 
-  // ── Drag-to-assign state ────────────────────────────────────────────────────
+  // โ”€โ”€ Drag-to-assign state โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   /** Keys of cells highlighted while dragging: `${userId}::${date}` */
   const [dragCells, setDragCells] = useState<Set<string>>(new Set());
 
@@ -826,11 +830,11 @@ export default function SchedulesPage() {
   /** True once long-press threshold is reached on mobile */
   const touchDragRef    = useRef(false);
 
-  // ── Auto-save ───────────────────────────────────────────────────────────────
+  // โ”€โ”€ Auto-save โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   /** Visual status driven by the auto-save effect below. */
   const [draftSaveStatus, setDraftSaveStatus] =
     useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
-  /** Debounce timer — cleared on every new mutation or unmount. */
+  /** Debounce timer โ€” cleared on every new mutation or unmount. */
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
    * Always points to the latest `handleSave`.
@@ -839,13 +843,13 @@ export default function SchedulesPage() {
    */
   const handleSaveRef = useRef<() => Promise<boolean>>(() => Promise.resolve(true));
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+  // โ”€โ”€ Derived โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   const monthDays = useMemo(() => getMonthDays(month), [month]);
 
-  /** Flat map: userId → date → ScheduleDay (from loaded schedules).
+  /** Flat map: userId โ’ date โ’ ScheduleDay (from loaded schedules).
    *  Every day is normalised on ingest so shiftCodes is ALWAYS a populated
-   *  array — regardless of whether the stored record predates multi-shift support
+   *  array โ€” regardless of whether the stored record predates multi-shift support
    *  or arrived with only a scalar shiftCode. */
   const flatSchedule = useMemo(() => {
     const flat: Record<string, Record<string, ScheduleDay>> = {};
@@ -893,7 +897,7 @@ export default function SchedulesPage() {
     return subRoles.find((sr) => sr.id === patternId) ?? null;
   }, [selectedDept, subRoles]);
 
-  /** True when the department uses a WEEKLY_WORKING_TIME pattern — shift painting is not applicable. */
+  /** True when the department uses a WEEKLY_WORKING_TIME pattern โ€” shift painting is not applicable. */
   const isWeeklyPattern = (deptPattern?.type ?? 'SHIFT_TIME') === 'WEEKLY_WORKING_TIME';
 
   /** Kept for backward compat (subRoleFilter dropdown). Single-element or empty. */
@@ -902,7 +906,7 @@ export default function SchedulesPage() {
     [deptPattern]
   );
 
-  /** Shift buttons for the paint toolbar — only from the department's SHIFT_TIME pattern. */
+  /** Shift buttons for the paint toolbar โ€” only from the department's SHIFT_TIME pattern. */
   const allDeptShifts = useMemo<WorkSchedulePatternShift[]>(
     () => (!deptPattern || isWeeklyPattern ? [] : deptPattern.shifts),
     [deptPattern, isWeeklyPattern]
@@ -919,7 +923,7 @@ export default function SchedulesPage() {
     return map;
   }, [extraWorks]);
 
-  /** MM-DD → HolidayDate (enabled only). Used for fast holiday lookups in cell rendering. */
+  /** MM-DD โ’ HolidayDate (enabled only). Used for fast holiday lookups in cell rendering. */
   const holidayByMmdd = useMemo<Map<string, HolidayDate>>(() => {
     const map = new Map<string, HolidayDate>();
     for (const hd of holidayDates) {
@@ -937,7 +941,7 @@ export default function SchedulesPage() {
   const hasPending   = touchedCells.size > 0;
   const pendingCount = touchedCells.size;
 
-  // ── Cell value (pending overrides loaded) ─────────────────────────────────
+  // โ”€โ”€ Cell value (pending overrides loaded) โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   function getCellValue(
     userId: string,
@@ -949,19 +953,27 @@ export default function SchedulesPage() {
     return flatSchedule[userId]?.[date] ?? null;
   }
 
-  // ── Load static data ───────────────────────────────────────────────────────
+  // โ”€โ”€ Load static data โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   useEffect(() => {
-    deptApi.list({ pageSize: 200 }).then((r) => {
+    if (isSuperAdmin) {
+      branchApi.list().then(setBranches).catch(() => {});
+    }
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    const branchFilter = filterBranchId || undefined;
+    deptApi.list({ pageSize: 200, branchId: branchFilter }).then((r) => {
       if (isManager) {
         const allowedIds = new Set(user?.managerDepartments ?? []);
         setDepartments(r.items.filter((d) => allowedIds.has(d.id)));
       } else {
         setDepartments(r.items);
       }
+      setDeptId('');
     }).catch(() => {});
-    workSchedulePatternApi.list().then(setSubRoles).catch(() => {});
-  }, [isManager, user?.managerDepartments]);
+    workSchedulePatternApi.list({ branchId: branchFilter }).then(setSubRoles).catch(() => {});
+  }, [isManager, user?.managerDepartments, filterBranchId]);
 
   // Load employees when dept changes; reset filters and paint mode
   useEffect(() => {
@@ -981,10 +993,10 @@ export default function SchedulesPage() {
     holidaysApi.listDates(typeId).then(setHolidayDates).catch(() => setHolidayDates([]));
   }, [selectedDept?.holidayTypeId]);
 
-  // ── Keep activeShiftRef in sync ────────────────────────────────────────────
+  // โ”€โ”€ Keep activeShiftRef in sync โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   useEffect(() => { activeShiftRef.current = activeShift; }, [activeShift]);
 
-  // ── Global drag-end handler ─────────────────────────────────────────────────
+  // โ”€โ”€ Global drag-end handler โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   useEffect(() => {
     function applyDrag() {
       const shift = activeShiftRef.current;
@@ -1037,7 +1049,7 @@ export default function SchedulesPage() {
     };
   }, []); // stable: only refs + stable setters used inside
 
-  // ── Load extra works ───────────────────────────────────────────────────────
+  // โ”€โ”€ Load extra works โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   const loadExtraWorks = useCallback(async () => {
     if (!deptId) { setExtraWorks([]); return; }
@@ -1054,7 +1066,7 @@ export default function SchedulesPage() {
 
   useEffect(() => { loadExtraWorks(); }, [loadExtraWorks]);
 
-  // ── Load schedules ─────────────────────────────────────────────────────────
+  // โ”€โ”€ Load schedules โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   const loadSchedules = useCallback(async () => {
     if (!deptId) { setSchedules([]); return; }
@@ -1073,7 +1085,7 @@ export default function SchedulesPage() {
 
   useEffect(() => { loadSchedules(); }, [loadSchedules]);
 
-  // ── Publish status — re-fetched whenever dept/month change, after save, after publish ──
+  // โ”€โ”€ Publish status โ€” re-fetched whenever dept/month change, after save, after publish โ”€โ”€
 
   const fetchPublishStatus = useCallback(async () => {
     if (!deptId) { setPublishStatus(null); return; }
@@ -1087,7 +1099,7 @@ export default function SchedulesPage() {
 
   useEffect(() => { fetchPublishStatus(); }, [fetchPublishStatus]);
 
-  // ── beforeunload — warn if there are unsaved changes ─────────────────────
+  // โ”€โ”€ beforeunload โ€” warn if there are unsaved changes โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   useEffect(() => {
     function onBeforeUnload(e: BeforeUnloadEvent) {
       if (!hasPending && !showEWModal) return;
@@ -1098,14 +1110,14 @@ export default function SchedulesPage() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [hasPending, showEWModal]);
 
-  // ── Keep handleSaveRef current (no deps — intentional, runs after every render) ──
+  // โ”€โ”€ Keep handleSaveRef current (no deps โ€” intentional, runs after every render) โ”€โ”€
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { handleSaveRef.current = handleSave; });
 
-  // ── Auto-save: debounce 600 ms after the last cell mutation ──────────────
+  // โ”€โ”€ Auto-save: debounce 600 ms after the last cell mutation โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
   useEffect(() => {
     if (touchedCells.size === 0) {
-      // Nothing pending — clear any queued timer (e.g. after Cancel or successful save).
+      // Nothing pending โ€” clear any queued timer (e.g. after Cancel or successful save).
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
         autoSaveTimerRef.current = null;
@@ -1135,7 +1147,7 @@ export default function SchedulesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [touchedCells]);
 
-  // ── Publish schedule — marks all draft records as published ──────────────
+  // โ”€โ”€ Publish schedule โ€” marks all draft records as published โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   async function handlePublish() {
     if (!deptId || hasPending || showEWModal) return;
@@ -1156,7 +1168,7 @@ export default function SchedulesPage() {
     }
   }
 
-  // ── Apply a shift to a cell (used by paint mode and modal) ───────────────
+  // โ”€โ”€ Apply a shift to a cell (used by paint mode and modal) โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   function applyShift(userId: string, date: string, dto: ScheduleDayDto) {
     if (isWeeklyPattern) {
@@ -1173,25 +1185,25 @@ export default function SchedulesPage() {
     setTouchedCells((prev) => new Set([...prev, `${userId}::${date}`]));
   }
 
-  // ── Cell click: paint mode toggles one shift; otherwise open modal ─────────
+  // โ”€โ”€ Cell click: paint mode toggles one shift; otherwise open modal โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   function handleCellClick(userId: string, date: string) {
     // Suppress the synthetic onClick that fires at the end of a drag
     if (justDraggedRef.current) return;
 
     if (isWeeklyPattern) {
-      // No shift assignment for weekly-time depts — open extra work modal directly
+      // No shift assignment for weekly-time depts โ€” open extra work modal directly
       openEwFromCell(userId, date);
       return;
     }
     setSaveError('');
     if (activeShift !== null) {
       if (activeShift.isDayOff || activeShift.shiftCode === null) {
-        // วันหยุด / ล้างค่า — intentional overwrite
+        // วันหยุด / ลฉางค่า โ€” intentional overwrite
         applyShift(userId, date, activeShift);
       } else {
-        // Shift code paint — pass ONLY the single code so the merge engine
-        // accumulates it into existing codes (D → click N → DN, no toggle-off).
+        // Shift code paint โ€” pass ONLY the single code so the merge engine
+        // accumulates it into existing codes (D โ’ click N โ’ DN, no toggle-off).
         // DO NOT pre-compute the combined list here; that caused the overwrite bug
         // because applyShiftsToDraft would only use dto.shiftCode (the first code).
         applyShift(userId, date, { shiftCode: activeShift.shiftCode, isDayOff: false });
@@ -1201,7 +1213,7 @@ export default function SchedulesPage() {
     }
   }
 
-  // ── Modal shift selection ─────────────────────────────────────────────────
+  // โ”€โ”€ Modal shift selection โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   function handleShiftSelect(dto: ScheduleDayDto) {
     if (!editCell) return;
@@ -1209,7 +1221,7 @@ export default function SchedulesPage() {
     setEditCell(null);
   }
 
-  // ── Open EW modal from a cell (pre-fill employee + date) ─────────────────
+  // โ”€โ”€ Open EW modal from a cell (pre-fill employee + date) โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   function openEwFromCell(userId: string, date: string) {
     setEditCell(null);          // close shift picker if open
@@ -1219,7 +1231,7 @@ export default function SchedulesPage() {
     setShowEWModal(true);
   }
 
-  // ── Extra work handlers ────────────────────────────────────────────────────
+  // โ”€โ”€ Extra work handlers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   async function handleSaveExtraWork(
     dto: CreateExtraWorkDto | (UpdateExtraWorkDto & { id: string })
@@ -1243,18 +1255,18 @@ export default function SchedulesPage() {
     await fetchPublishStatus();
   }
 
-  // ── Save all pending edits ─────────────────────────────────────────────────
+  // โ”€โ”€ Save all pending edits โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   async function handleSave(): Promise<boolean> {
     if (!hasPending) return true;
     setSaving(true);
     setSaveError('');
     try {
-      // Build payload from ONLY the cells the user explicitly touched.
-      // Each entry is a flat (userId, date, shiftCodes, isDayOff) record —
+      // Build payload from ONLY the cells the UserProfile explicitly touched.
+      // Each entry is a flat (userId, date, shiftCodes, isDayOff) record โ€”
       // no week merging, no extra days included.
       //
-      // Cleared cells (shiftCodes=[], isDayOff=false) ARE included — the backend
+      // Cleared cells (shiftCodes=[], isDayOff=false) ARE included โ€” the backend
       // treats them as a DELETE signal and removes the existing record.
       // Do NOT skip them here; skipping them would leave stale data in the DB.
       const payload: ScheduleDayUpsertDto[] = [];
@@ -1314,9 +1326,22 @@ export default function SchedulesPage() {
     }
   }
 
-  // ── Picker context ─────────────────────────────────────────────────────────
+  // โ”€โ”€ Picker context โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
-  // Use the DEPARTMENT's pattern for the picker — not the employee's own workSchedulePatternId,
+  // Use the DEPARTMENT's pattern for the picker โ€” not the employee's own workSchedulePatternId,
+  // which may be stale if the department recently changed its pattern.
+  const editSubRole      = deptPattern && !isWeeklyPattern ? deptPattern : null;
+  const editCurrentCodes = editCell ? getCodes(getCellValue(editCell.userId, editCell.date)) : [];
+
+  // โ”€โ”€ Render โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+
+  return (
+    <div className="p-4 lg:p-6 max-w-full">
+
+      {/* Header */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-semibold text-gray-900"'s own workSchedulePatternId,
   // which may be stale if the department recently changed its pattern.
   const editSubRole      = deptPattern && !isWeeklyPattern ? deptPattern : null;
   const editCurrentCodes = editCell ? getCodes(getCellValue(editCell.userId, editCell.date)) : [];
@@ -1334,6 +1359,11 @@ export default function SchedulesPage() {
         <div className="flex flex-wrap items-center gap-2">
           {deptId && (
             <button
+              onClick={() => { setEwEdit(null); setEwPrefillEmployee('/h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {deptId && (
+            <button
               onClick={() => { setEwEdit(null); setEwPrefillEmployee(''); setEwPrefillDate(''); setShowEWModal(true); }}
               className="rounded-xl border border-emerald-400 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
             >
@@ -1341,7 +1371,7 @@ export default function SchedulesPage() {
             </button>
           )}
 
-          {/* ── Auto-save status indicator ── */}
+          {/* โ”€โ”€ Auto-save status indicator โ”€โ”€ */}
           {draftSaveStatus === 'pending' && (
             <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
               <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
@@ -1356,7 +1386,7 @@ export default function SchedulesPage() {
           )}
           {draftSaveStatus === 'saved' && (
             <span className="flex items-center gap-1.5 text-xs font-medium text-green-600">
-              ✓ บันทึกร่างแล้ว
+              โ“ บันทึกร่างแล้ว
             </span>
           )}
           {draftSaveStatus === 'error' && (
@@ -1378,18 +1408,17 @@ export default function SchedulesPage() {
               onClick={() => {
                 setDraftWeeks(new Map());
                 setTouchedCells(new Set());
-                setSaveError('');
+                setSaveError(';
                 setPublishMsg(null);
                 setDraftSaveStatus('idle');
               }}
               className="rounded-xl border border-amber-300 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50"
             >
-              ยกเลิก ({pendingCount})
+              ยกเลิก
             </button>
           )}
           {/* Retry button shown only on save error */}
-          {draftSaveStatus === 'error' && (
-            <button
+          {draftSaveStatus === '      <button
               disabled={saving}
               onClick={() => {
                 setDraftSaveStatus('saving');
@@ -1400,11 +1429,11 @@ export default function SchedulesPage() {
               }}
               className="rounded-xl border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-40"
             >
-              ลองใหม่
+              ลองใหมจ
             </button>
           )}
 
-          {/* ── Publish button — three states ── */}
+          {/* โ”€โ”€ Publish button โ€” three states โ”€โ”€ */}
           {deptId && (() => {
             // HR-approval gate overrides everything
             if (requiresHrApproval && !isHRRole) {
@@ -1419,7 +1448,7 @@ export default function SchedulesPage() {
               );
             }
 
-            // CASE 1 — unsaved schedule edits or EW modal still open (possibly unsaved EW)
+            // CASE 1 โ€” unsaved schedule edits or EW modal still open (possibly unsaved EW)
             if (hasPending || showEWModal) {
               return (
                 <button
@@ -1432,19 +1461,19 @@ export default function SchedulesPage() {
               );
             }
 
-            // CASE 2 — saved, identical to published (nothing new to publish)
+            // CASE 2 โ€” saved, identical to published (nothing new to publish)
             if (publishStatus?.alreadyPublished) {
               return (
                 <button
                   disabled
                   className="rounded-xl border border-green-300 bg-green-50 px-5 py-2 text-sm font-semibold text-green-700 disabled:opacity-90"
                 >
-                  ✓ เผยแพร่แล้ว
+                  โ“ เผยแพร่แล้ว
                 </button>
               );
             }
 
-            // CASE 3 — saved + has unpublished drafts (ready to publish)
+            // CASE 3 โ€” saved + has unpublished drafts (ready to publish)
             return (
               <button
                 onClick={handlePublish}
@@ -1467,6 +1496,18 @@ export default function SchedulesPage() {
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-3">
+        {isSuperAdmin && branches.length > 0 && (
+          <select
+            value={filterBranchId}
+            onChange={(e) => { setFilterBranchId(e.target.value); setDraftWeeks(new Map()); setTouchedCells(new Set()); setSaveError(''); setDraftSaveStatus('idle'); }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+          >
+            <option value="">— ทุกสาขา —</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>{b.nameTh}</option>
+            ))}
+          </select>
+        )}
         <input
           type="month"
           value={month}
@@ -1478,20 +1519,20 @@ export default function SchedulesPage() {
           onChange={(e) => { setDeptId(e.target.value); setDraftWeeks(new Map()); setTouchedCells(new Set()); setSaveError(''); setDraftSaveStatus('idle'); }}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
         >
-          <option value="">— เลือกแผนก —</option>
+          <option value="">โ€” เลือกแผนก โ€”</option>
           {departments.map((d) => (
             <option key={d.id} value={d.id}>{d.nameTh}</option>
           ))}
         </select>
 
-        {/* Pattern filter — only useful for SHIFT_TIME dept patterns */}
+        {/* Pattern filter โ€” only useful for SHIFT_TIME dept patterns */}
         {deptId && !isWeeklyPattern && deptSubRoles.length > 0 && (
           <select
             value={subRoleFilter}
             onChange={(e) => setSubRoleFilter(e.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
           >
-            <option value="">— รูปแบบทั้งหมด —</option>
+            <option value="">โ€” รูปแบบทั้งหมด โ€”</option>
             {deptSubRoles.map((sr) => (
               <option key={sr.id} value={sr.id}>{sr.nameTh}</option>
             ))}
@@ -1499,17 +1540,17 @@ export default function SchedulesPage() {
         )}
       </div>
 
-      {/* Weekly-pattern notice — replaces painter when dept uses WEEKLY_WORKING_TIME */}
+      {/* Weekly-pattern notice โ€” replaces painter when dept uses WEEKLY_WORKING_TIME */}
       {deptId && isWeeklyPattern && (
         <div className="mb-3 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2.5 text-sm text-blue-700 ring-1 ring-blue-200">
           <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
           </svg>
-          แผนกนี้ใช้เวลาทำงานทั่วไป ไม่ต้องจัดเวร
+          แผนกนี้ใช้เวลาทำงานทั่วคป ไม่ต้องจัดเวร
         </div>
       )}
 
-      {/* Paint-mode shift toolbar — SHIFT_TIME patterns only */}
+      {/* Paint-mode shift toolbar โ€” SHIFT_TIME patterns only */}
       {deptId && !isWeeklyPattern && allDeptShifts.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-gray-500">เลือกกะ:</span>
@@ -1520,7 +1561,7 @@ export default function SchedulesPage() {
               <button
                 key={shift.code}
                 onClick={() => setActiveShift(isActive ? null : { shiftCode: shift.code, isDayOff: false })}
-                title={`${shift.nameTh}  ${shift.startTime}–${shift.endTime}`}
+                title={`${shift.nameTh}  ${shift.startTime}โ€“${shift.endTime}`}
                 className={[
                   'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors',
                   isActive
@@ -1529,7 +1570,7 @@ export default function SchedulesPage() {
                 ].join(' ')}
               >
                 <span>{shift.code}</span>
-                <span className="font-normal opacity-75">{shift.startTime}–{shift.endTime}</span>
+                <span className="font-normal opacity-75">{shift.startTime}โ€“{shift.endTime}</span>
               </button>
             );
           })}
@@ -1565,7 +1606,7 @@ export default function SchedulesPage() {
                     : 'border-gray-200 text-gray-400 hover:bg-gray-50',
                 ].join(' ')}
               >
-                ล้างค่า
+                ลฉางค่า
               </button>
             );
           })()}
@@ -1575,12 +1616,12 @@ export default function SchedulesPage() {
               onClick={() => setActiveShift(null)}
               className="ml-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100"
             >
-              ✕ ออกจากโหมดระบาย
+              โ• ออกจากโหมดระบาย
             </button>
           )}
 
           {activeShift !== null && (
-            <span className="text-xs text-amber-600">← คลิกช่องใดก็ได้เพื่อใส่กะ</span>
+            <span className="text-xs text-amber-600">โ คลิกช่องใดก็ได้เพื่อใส่กะ</span>
           )}
         </div>
       )}
@@ -1655,7 +1696,7 @@ export default function SchedulesPage() {
                     return (
                       <td
                         key={date}
-                        data-drag-user={isPast ? undefined : emp.id}
+                        data-drag-employee={isPast ? undefined : emp.id}
                         data-drag-date={isPast ? undefined : date}
                         onClick={() => { if (!isPast) handleCellClick(emp.id, date); }}
                         onMouseDown={(e) => {
@@ -1692,7 +1733,7 @@ export default function SchedulesPage() {
                           e.preventDefault();
                           const touch = e.touches[0];
                           const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                          const td  = el?.closest<HTMLElement>('[data-drag-user]');
+                          const td  = el?.closest<HTMLElement>('[data-drag-employee]');
                           const u   = td?.dataset.dragUser;
                           const dt  = td?.dataset.dragDate;
                           if (u && dt) setDragCells((prev) => new Set([...prev, `${u}::${dt}`]));
@@ -1806,3 +1847,4 @@ export default function SchedulesPage() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * attendance-approval.router.ts
  *
  * REST endpoints for the manager approval workflow.
@@ -48,7 +48,7 @@ router.use(authenticate);
 
 router.post(
   '/',
-  requireRole(['employee', 'part_time', 'manager', 'hr', 'super_admin']),
+  requireRole(['employee', 'part_time', 'super_admin', 'admin', 'hr_branch', 'manager']),
   (req: Request, res: Response, next: NextFunction) => {
     try {
       const { type } = req.body as { type?: string };
@@ -170,7 +170,7 @@ router.get(
 
 router.patch(
   '/:id',
-  requireRole(['manager', 'hr', 'super_admin']),
+  requireRole(['super_admin', 'admin', 'hr_branch', 'manager']),
   (req: Request, res: Response, next: NextFunction) => {
     try {
       const { status } = req.body as { status?: string };

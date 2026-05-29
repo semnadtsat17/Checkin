@@ -1,8 +1,8 @@
-import type { HolidayType, HolidayDate, Department, UserRole } from '@hospital-hr/shared';
+﻿import type { HolidayType, HolidayDate, Department, UserRole } from '@hospital-hr/shared';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
-import { hasPermission } from '../../core/permissions';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 
 // ─── Thai public holiday presets ──────────────────────────────────────────────
 //
@@ -36,7 +36,8 @@ const departmentStore:  IRepository<Department>  = new JsonRepository<Department
 // ─── DTOs ────────────────────────────────────────────────────────────────────
 
 export interface CreateTypeDto {
-  name: string;
+  name:     string;
+  branchId: string;
 }
 
 export interface UpdateTypeDto {
@@ -60,7 +61,7 @@ export interface UpdateDateDto {
 const MM_DD_RE = /^\d{2}-\d{2}$/;
 
 function assertHrRole(actorRole: UserRole): void {
-  if (!hasPermission(actorRole, 'hr')) {
+  if (!hasHrAccess(actorRole)) {
     throw new AppError(403, 'Only HR and Super Admin can manage holiday policies', 'FORBIDDEN');
   }
 }
@@ -81,8 +82,8 @@ export const holidayService = {
 
   // ── Holiday Types ───────────────────────────────────────────────────────────
 
-  listTypes(): HolidayType[] {
-    return holidayTypeStore.findAll();
+  listTypes(branchId?: string): HolidayType[] {
+    return holidayTypeStore.findAll(branchId ? t => t.branchId === branchId : undefined);
   },
 
   findTypeById(id: string): HolidayType {
@@ -93,17 +94,18 @@ export const holidayService = {
 
   createType(dto: CreateTypeDto, actorRole: UserRole): HolidayType {
     assertHrRole(actorRole);
-    if (!dto.name?.trim()) {
-      throw new AppError(400, 'name is required', 'VALIDATION_ERROR');
-    }
+    if (!dto.name?.trim()) throw new AppError(400, 'name is required', 'VALIDATION_ERROR');
+    if (!dto.branchId)     throw new AppError(400, 'branchId is required', 'VALIDATION_ERROR');
+
     const duplicate = holidayTypeStore.exists(
-      (t) => t.name.toLowerCase() === dto.name.trim().toLowerCase(),
+      (t) => t.branchId === dto.branchId && t.name.toLowerCase() === dto.name.trim().toLowerCase(),
     );
     if (duplicate) {
-      throw new AppError(409, `Holiday type '${dto.name}' already exists`, 'DUPLICATE');
+      throw new AppError(409, `Holiday type '${dto.name}' already exists in this branch`, 'DUPLICATE');
     }
     return holidayTypeStore.create({
-      name: dto.name.trim(),
+      branchId: dto.branchId,
+      name:     dto.name.trim(),
     } as Omit<HolidayType, 'id' | 'createdAt' | 'updatedAt'>);
   },
 

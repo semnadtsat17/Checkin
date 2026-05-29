@@ -1,51 +1,30 @@
 /**
  * hrSettings.ts
  *
- * API layer for the full AttendanceSettings shape.
- *
- * The backend GET /org-settings currently returns a subset of these fields.
- * This module merges the response with safe defaults so the HR Settings page
- * always has a complete, typed object to work with — and remains forward-
- * compatible when the backend is extended to persist the remaining fields.
- *
- * PATCH sends only the fields that actually changed (partial update).
+ * API layer for per-branch attendance settings.
+ * Maps between the flat BranchSettings wire format and the nested
+ * AttendanceSettings shape used by HRSettings.tsx.
  */
 import { apiFetch } from './client';
+import type { BranchSettings } from '@hospital-hr/shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AttendanceSettings {
-  mode: 'SIMPLE' | 'FULL';
+  mode: 'SIMPLE' | 'NORMAL';
 
   requireManagerApproval: boolean;
+  continuousGapMinutes:   number;
+  retroApprovalMode:      'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY';
 
-  /**
-   * Maximum gap (minutes) between adjacent work segments that the Snap Time
-   * Engine will still merge into one window.  0 = touching-only merge.
-   */
-  continuousGapMinutes: number;
+  lateRule:      { graceMinutes: number };
+  earlyLeaveRule: { graceMinutes: number };
 
-  /**
-   * Approval chain for RETROACTIVE_CHECKIN requests.
-   *   HR_ONLY         — HR approves directly; no manager step.
-   *   MANAGER_THEN_HR — Manager approves first, then HR (default).
-   *   MANAGER_ONLY    — Manager approves; no HR step required.
-   */
-  retroApprovalMode: 'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY';
+  /** Minutes before shift start an employee may check in. 0 = no restriction. */
+  checkInWindowMinutes: number;
 
-  workSchedule: {
-    startTime: string;   // HH:mm
-    endTime:   string;   // HH:mm
-    flexible:  boolean;
-  };
-
-  lateRule: {
-    graceMinutes: number;
-  };
-
-  earlyLeaveRule: {
-    graceMinutes: number;
-  };
+  /** Minutes after shift start after which check-in is blocked. 0 = disabled. */
+  absentAfterMinutes: number;
 
   otRule: {
     enabled:           boolean;
@@ -54,8 +33,7 @@ export interface AttendanceSettings {
   };
 
   locationRule: {
-    enabled:      boolean;
-    radiusMeters: number;
+    enabled: boolean;
   };
 
   photoRule: {
@@ -74,9 +52,10 @@ export type AttendanceSettingsPatch = Partial<{
   requireManagerApproval: boolean;
   continuousGapMinutes:   number;
   retroApprovalMode:      AttendanceSettings['retroApprovalMode'];
-  workSchedule:           Partial<AttendanceSettings['workSchedule']>;
   lateRule:               Partial<AttendanceSettings['lateRule']>;
   earlyLeaveRule:         Partial<AttendanceSettings['earlyLeaveRule']>;
+  checkInWindowMinutes:   number;
+  absentAfterMinutes:     number;
   otRule:                 Partial<AttendanceSettings['otRule']>;
   locationRule:           Partial<AttendanceSettings['locationRule']>;
   photoRule:              Partial<AttendanceSettings['photoRule']>;
@@ -84,23 +63,18 @@ export type AttendanceSettingsPatch = Partial<{
 }>;
 
 // ─── Safe defaults ────────────────────────────────────────────────────────────
-// Applied for any fields not yet stored by the backend.
-// Values match the business-logic constants used in Phase 1–3 utilities.
 
 export const SETTINGS_DEFAULTS: AttendanceSettings = {
-  mode:                   'FULL',
+  mode:                   'NORMAL',
   requireManagerApproval: true,
   continuousGapMinutes:   0,
   retroApprovalMode:      'MANAGER_THEN_HR',
 
-  workSchedule: {
-    startTime: '08:30',
-    endTime:   '17:30',
-    flexible:  false,
-  },
-
   lateRule:      { graceMinutes: 15 },
   earlyLeaveRule: { graceMinutes: 5 },
+
+  checkInWindowMinutes: 30,
+  absentAfterMinutes:   0,
 
   otRule: {
     enabled:           false,
@@ -108,74 +82,83 @@ export const SETTINGS_DEFAULTS: AttendanceSettings = {
     requireApproval:   true,
   },
 
-  locationRule: {
-    enabled:      false,
-    radiusMeters: 100,
-  },
+  locationRule: { enabled: false },
 
   photoRule: {
-    requireCheckInPhoto:  false,
+    requireCheckInPhoto:  true,
     requireCheckOutPhoto: false,
   },
 
   hrReport: { imageMode: 'ON_DEMAND' },
 };
 
-// ─── API calls ────────────────────────────────────────────────────────────────
+// ─── Mapping helpers ──────────────────────────────────────────────────────────
 
-/**
- * Fetches org settings and merges with SETTINGS_DEFAULTS.
- * The merge is shallow-per-section: the backend response wins for any field it
- * returns; defaults fill in the rest. This keeps the page fully functional even
- * before the backend is extended to persist every field.
- */
-export async function getAttendanceSettings(): Promise<AttendanceSettings> {
-  const raw = await apiFetch<Partial<AttendanceSettings>>('/api/org-settings');
-
+function fromBranchSettings(bs: BranchSettings): AttendanceSettings {
   return {
-    ...SETTINGS_DEFAULTS,
-    ...raw,
-    workSchedule: { ...SETTINGS_DEFAULTS.workSchedule, ...raw.workSchedule },
-    lateRule:      { ...SETTINGS_DEFAULTS.lateRule,      ...raw.lateRule      },
-    earlyLeaveRule: { ...SETTINGS_DEFAULTS.earlyLeaveRule, ...raw.earlyLeaveRule },
-    otRule:        { ...SETTINGS_DEFAULTS.otRule,        ...raw.otRule        },
-    locationRule:  { ...SETTINGS_DEFAULTS.locationRule,  ...raw.locationRule  },
-    photoRule:     { ...SETTINGS_DEFAULTS.photoRule,     ...raw.photoRule     },
-    hrReport:      { ...SETTINGS_DEFAULTS.hrReport,      ...raw.hrReport      },
+    mode:                   bs.attendanceMode === 'SIMPLE' ? 'SIMPLE' : 'NORMAL',
+    requireManagerApproval: bs.requireManagerApproval,
+    continuousGapMinutes:   bs.continuousGapMinutes,
+    retroApprovalMode:      bs.retroApprovalMode,
+    lateRule:               { graceMinutes: bs.lateGraceMinutes },
+    earlyLeaveRule:         { graceMinutes: bs.earlyLeaveGraceMinutes },
+    checkInWindowMinutes:   bs.checkInWindowMinutes,
+    absentAfterMinutes:     bs.absentAfterMinutes,
+    otRule: {
+      enabled:           bs.otEnabled,
+      startAfterMinutes: bs.otStartAfterMinutes,
+      requireApproval:   bs.otRequireApproval,
+    },
+    locationRule: { enabled: bs.locationEnabled },
+    photoRule: {
+      requireCheckInPhoto:  bs.requireCheckInPhoto,
+      requireCheckOutPhoto: bs.requireCheckOutPhoto,
+    },
+    hrReport: { imageMode: bs.hrReportImageMode },
   };
 }
 
-/**
- * Sends a partial update.  Only the changed top-level sections are included.
- */
-export async function patchAttendanceSettings(
-  patch: AttendanceSettingsPatch,
-): Promise<AttendanceSettings> {
-  const raw = await apiFetch<Partial<AttendanceSettings>>('/api/org-settings', {
-    method: 'PATCH',
-    body:   JSON.stringify(patch),
-  });
+function toBranchSettingsPatch(patch: AttendanceSettingsPatch): Partial<BranchSettings> {
+  const out: Partial<BranchSettings> = {};
+  if (patch.mode !== undefined)                  out.attendanceMode          = patch.mode === 'SIMPLE' ? 'SIMPLE' : 'NORMAL';
+  if (patch.requireManagerApproval !== undefined) out.requireManagerApproval = patch.requireManagerApproval;
+  if (patch.continuousGapMinutes   !== undefined) out.continuousGapMinutes   = patch.continuousGapMinutes;
+  if (patch.retroApprovalMode      !== undefined) out.retroApprovalMode      = patch.retroApprovalMode;
+  if (patch.lateRule?.graceMinutes  !== undefined) out.lateGraceMinutes      = patch.lateRule.graceMinutes;
+  if (patch.earlyLeaveRule?.graceMinutes !== undefined) out.earlyLeaveGraceMinutes = patch.earlyLeaveRule.graceMinutes;
+  if (patch.checkInWindowMinutes   !== undefined) out.checkInWindowMinutes   = patch.checkInWindowMinutes;
+  if (patch.absentAfterMinutes     !== undefined) out.absentAfterMinutes     = patch.absentAfterMinutes;
+  if (patch.otRule?.enabled           !== undefined) out.otEnabled           = patch.otRule.enabled;
+  if (patch.otRule?.startAfterMinutes !== undefined) out.otStartAfterMinutes = patch.otRule.startAfterMinutes;
+  if (patch.otRule?.requireApproval   !== undefined) out.otRequireApproval   = patch.otRule.requireApproval;
+  if (patch.locationRule?.enabled     !== undefined) out.locationEnabled     = patch.locationRule.enabled;
+  if (patch.photoRule?.requireCheckInPhoto  !== undefined) out.requireCheckInPhoto  = patch.photoRule.requireCheckInPhoto;
+  if (patch.photoRule?.requireCheckOutPhoto !== undefined) out.requireCheckOutPhoto = patch.photoRule.requireCheckOutPhoto;
+  if (patch.hrReport?.imageMode       !== undefined) out.hrReportImageMode   = patch.hrReport.imageMode;
+  return out;
+}
 
-  return {
-    ...SETTINGS_DEFAULTS,
-    ...raw,
-    workSchedule:  { ...SETTINGS_DEFAULTS.workSchedule,  ...raw.workSchedule  },
-    lateRule:       { ...SETTINGS_DEFAULTS.lateRule,       ...raw.lateRule       },
-    earlyLeaveRule: { ...SETTINGS_DEFAULTS.earlyLeaveRule, ...raw.earlyLeaveRule },
-    otRule:         { ...SETTINGS_DEFAULTS.otRule,         ...raw.otRule         },
-    locationRule:   { ...SETTINGS_DEFAULTS.locationRule,   ...raw.locationRule   },
-    photoRule:      { ...SETTINGS_DEFAULTS.photoRule,      ...raw.photoRule      },
-    hrReport:       { ...SETTINGS_DEFAULTS.hrReport,       ...raw.hrReport       },
-  };
+// ─── API calls ────────────────────────────────────────────────────────────────
+
+export async function getAttendanceSettings(branchId: string): Promise<AttendanceSettings> {
+  const bs = await apiFetch<BranchSettings>(`/api/branch-settings/${branchId}`);
+  return fromBranchSettings(bs);
+}
+
+export async function patchAttendanceSettings(
+  branchId: string,
+  patch:    AttendanceSettingsPatch,
+): Promise<AttendanceSettings> {
+  const bsPatch = toBranchSettingsPatch(patch);
+  const bs = await apiFetch<BranchSettings>(`/api/branch-settings/${branchId}`, {
+    method: 'PATCH',
+    body:   JSON.stringify(bsPatch),
+  });
+  return fromBranchSettings(bs);
 }
 
 // ─── Diff helper ──────────────────────────────────────────────────────────────
 
-/**
- * Compares two settings objects and returns a patch containing only the
- * top-level sections (or primitives) that have actually changed.
- * Uses JSON.stringify for deep equality — adequate for this data shape.
- */
 export function diffSettings(
   original: AttendanceSettings,
   current:  AttendanceSettings,
@@ -185,7 +168,6 @@ export function diffSettings(
   const keys = Object.keys(original) as (keyof AttendanceSettings)[];
   for (const key of keys) {
     if (JSON.stringify(original[key]) !== JSON.stringify(current[key])) {
-      // Type assertion is safe: key is a keyof AttendanceSettings
       (patch as Record<string, unknown>)[key] = current[key];
     }
   }

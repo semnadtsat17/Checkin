@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { hasPermission } from '../../core/permissions';
+﻿import { Request, Response, NextFunction } from 'express';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 import {
   ok,
   created,
@@ -21,7 +21,7 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
     const user = req.user!;
 
     // HR and above may cross branches; manager is restricted to their own
-    const allowCrossBranch = hasPermission(user.role, 'hr');
+    const allowCrossBranch = hasHrAccess(user.role);
     const branchId = allowCrossBranch
       ? (req.query.branchId as string | undefined)
       : user.branchId;

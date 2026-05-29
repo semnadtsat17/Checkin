@@ -1,40 +1,31 @@
 import type { UserRole } from '../types';
 
-/**
- * Role constants — use these instead of bare strings to avoid typos.
- *
- * ROLES.MANAGER === 'manager'
- */
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
-  HR:          'hr',
+  ADMIN:       'admin',
+  HR_BRANCH:   'hr_branch',
   MANAGER:     'manager',
   EMPLOYEE:    'employee',
   PARTTIME:    'part_time',
 } as const satisfies Record<string, UserRole>;
 
 /**
- * Numeric levels used for ordering only — do NOT use for permission checks.
- * Use hasPermission() in the backend permissions module for that.
- *
- * EMPLOYEE and PARTTIME intentionally share level 2 — they are siblings,
- * neither inherits from the other.
+ * Numeric levels — ordering only, not for permission checks.
+ * admin and hr_branch are siblings at level 4 with different scope.
  */
 export const ROLE_LEVEL: Record<UserRole, number> = {
   super_admin: 5,
-  hr:          4,
+  admin:       4,   // all-branch HR (formerly hr_global)
+  hr_branch:   4,   // branch-scoped HR (peer of admin, different scope)
   manager:     3,
   employee:    2,
-  part_time:   2, // peer of employee, NOT subordinate
+  part_time:   2,
 };
 
-/**
- * Display-order array, highest privilege first.
- * Useful for dropdowns, sort orders, etc.
- */
 export const ROLE_ORDER: UserRole[] = [
   'super_admin',
-  'hr',
+  'admin',
+  'hr_branch',
   'manager',
   'employee',
   'part_time',

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node fix_thai3.js)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

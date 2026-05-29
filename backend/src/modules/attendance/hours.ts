@@ -134,7 +134,7 @@ export function resolveMonthlyTarget(userId: string): number {
 
   if (employee.workSchedulePatternId) {
     const workSchedulePattern = workSchedulePatternStore.findById(employee.workSchedulePatternId);
-    if (workSchedulePattern) return workSchedulePattern.monthlyWorkingHours;
+    if (workSchedulePattern) return workSchedulePattern.monthlyWorkingHours ?? 0;
   }
 
   return 0;

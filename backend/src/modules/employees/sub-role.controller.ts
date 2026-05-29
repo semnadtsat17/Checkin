@@ -3,10 +3,12 @@ import type { UserRole } from '@hospital-hr/shared';
 import { ok, created, noContent } from '../../shared/utils/response';
 import { workSchedulePatternService } from './sub-role.service';
 
-// GET /api/work-schedule-patterns?forRole=&isActive=
+// GET /api/work-schedule-patterns?forRole=&isActive=&branchId=
 export async function list(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    const branchId = (req.query.branchId as string | undefined) ?? req.user?.branchId;
     const patterns = workSchedulePatternService.findAll({
+      branchId,
       forRole:  req.query.forRole  as UserRole | undefined,
       isActive: req.query.isActive === 'true'  ? true  :
                 req.query.isActive === 'false' ? false : undefined,
@@ -29,7 +31,8 @@ export async function getOne(req: Request, res: Response, next: NextFunction): P
 // POST /api/work-schedule-patterns
 export async function create(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    created(res, workSchedulePatternService.create(req.body), 'WorkSchedulePattern created');
+    const dto = { ...req.body, branchId: req.body.branchId ?? req.user!.branchId };
+    created(res, workSchedulePatternService.create(dto), 'WorkSchedulePattern created');
   } catch (err) {
     next(err);
   }

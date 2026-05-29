@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { employeeService } from '../employees/employee.service';
 import { ok } from '../../shared/utils/response';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { } from '../../types/express';
 
 // POST /auth/login  { email, password }
 export async function login(req: Request, res: Response, next: NextFunction) {
@@ -16,6 +18,24 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 export function me(req: Request, res: Response, next: NextFunction) {
   try {
     ok(res, employeeService.findById(req.user!.userId));
+  } catch (e) { next(e); }
+}
+
+// GET /auth/branches  — list branches the caller can access
+export function listBranches(req: Request, res: Response, next: NextFunction) {
+  try {
+    ok(res, authService.listBranches(req.user!.userId));
+  } catch (e) { next(e); }
+}
+
+// POST /auth/select-branch  { branchId }
+export function selectBranch(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { branchId } = req.body as { branchId: string };
+    if (!branchId) {
+      return res.status(400).json({ success: false, error: 'branchId is required' });
+    }
+    ok(res, authService.selectBranch(req.user!.userId, branchId));
   } catch (e) { next(e); }
 }
 

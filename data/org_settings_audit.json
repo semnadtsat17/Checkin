@@ -1,0 +1,24 @@
+[
+  {
+    "changedByUserId": "emp-002",
+    "changedFields": [
+      "photoRule"
+    ],
+    "previousValue": {
+      "photoRule": {
+        "requireCheckInPhoto": true,
+        "requireCheckOutPhoto": false
+      }
+    },
+    "newValue": {
+      "photoRule": {
+        "requireCheckInPhoto": true,
+        "requireCheckOutPhoto": true
+      }
+    },
+    "timestamp": "2026-04-23T15:44:35.095Z",
+    "id": "64bbfa7f-2577-41dd-bfed-96c8ca070958",
+    "createdAt": "2026-04-23T15:44:35.096Z",
+    "updatedAt": "2026-04-23T15:44:35.096Z"
+  }
+]

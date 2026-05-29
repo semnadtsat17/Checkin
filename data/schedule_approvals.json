@@ -1,0 +1,68 @@
+[
+  {
+    "departmentId": "dept-002",
+    "month": "2026-03",
+    "status": "published",
+    "submittedBy": "emp-003",
+    "submittedAt": "2026-03-15T21:25:43.626Z",
+    "reviewedBy": "emp-003",
+    "reviewedAt": "2026-03-15T21:25:43.626Z",
+    "requireHrApprovalSnapshot": false,
+    "id": "c0d689aa-e635-4d7d-a7c2-7483bfa70f73",
+    "createdAt": "2026-03-15T21:25:43.631Z",
+    "updatedAt": "2026-03-15T21:25:43.631Z"
+  },
+  {
+    "departmentId": "dept-001",
+    "month": "2026-03",
+    "status": "rejected",
+    "submittedBy": "emp-002",
+    "submittedAt": "2026-03-16T09:43:11.187Z",
+    "reviewedBy": "emp-002",
+    "reviewedAt": "2026-03-16T18:12:57.204Z",
+    "requireHrApprovalSnapshot": false,
+    "id": "bc4b8af0-2535-45ce-880c-97770f293468",
+    "createdAt": "2026-03-16T09:43:11.311Z",
+    "updatedAt": "2026-03-16T18:12:57.205Z",
+    "rejectReason": "ะัเ้่"
+  },
+  {
+    "departmentId": "dept-001",
+    "month": "2026-03",
+    "status": "pending_hr_approval",
+    "submittedBy": "emp-002",
+    "submittedAt": "2026-03-16T09:45:18.441Z",
+    "reviewedBy": "emp-002",
+    "reviewedAt": "2026-03-16T19:34:12.895Z",
+    "requireHrApprovalSnapshot": false,
+    "id": "7986476c-d71d-44be-9aee-e990d8224b8f",
+    "createdAt": "2026-03-16T09:45:18.441Z",
+    "updatedAt": "2026-03-16T20:46:33.815Z"
+  },
+  {
+    "departmentId": "dept-001",
+    "month": "2026-03",
+    "status": "pending_hr_approval",
+    "submittedBy": "emp-002",
+    "submittedAt": "2026-03-16T09:48:17.851Z",
+    "requireHrApprovalSnapshot": true,
+    "id": "0b463229-1f60-4b16-add6-59e5018abb84",
+    "createdAt": "2026-03-16T09:48:17.851Z",
+    "updatedAt": "2026-03-17T08:55:13.244Z",
+    "reviewedBy": "emp-002",
+    "reviewedAt": "2026-03-16T19:33:59.616Z"
+  },
+  {
+    "departmentId": "dept-001",
+    "month": "2026-03",
+    "status": "pending_hr_approval",
+    "submittedBy": "emp-002",
+    "submittedAt": "2026-03-16T16:41:38.226Z",
+    "requireHrApprovalSnapshot": true,
+    "id": "73265aee-d5ed-44b9-9284-aa3c09f98200",
+    "createdAt": "2026-03-16T16:41:38.226Z",
+    "updatedAt": "2026-03-17T09:11:55.496Z",
+    "reviewedBy": "emp-002",
+    "reviewedAt": "2026-03-16T19:34:22.525Z"
+  }
+]

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { ScheduleApproval, User, WorkSchedulePattern, Department } from '@hospital-hr/shared';
+import type { ScheduleApproval, UserProfile, WorkSchedulePattern, Department } from '@hospital-hr/shared';
 import { scheduleApprovalApi } from '../../api/scheduleApprovals';
 import { scheduleApi, type ScheduleDayRecord } from '../../api/schedules';
 import { employeeApi } from '../../api/employees';
@@ -9,7 +9,7 @@ import { deptApi } from '../../api/departments';
 import { PageSpinner } from '../../components/Spinner';
 import { toLocalIso } from '../../utils/date/getWeekStart';
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ helpers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function getMonthDays(month: string): string[] {
   const [y, m] = month.split('-').map(Number);
@@ -21,7 +21,7 @@ function getMonthDays(month: string): string[] {
 
 const TH_DOW_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Page โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 export default function ScheduleApprovalPage() {
   const { scheduleId } = useParams<{ scheduleId: string }>();
@@ -29,7 +29,7 @@ export default function ScheduleApprovalPage() {
 
   const [approval,   setApproval]   = useState<ScheduleApproval | null>(null);
   const [department, setDepartment] = useState<Department | null>(null);
-  const [employees,  setEmployees]  = useState<User[]>([]);
+  const [employees,  setEmployees]  = useState<UserProfile[]>([]);
   const [schedules,  setSchedules]  = useState<ScheduleDayRecord[]>([]);
   const [subRoles,   setSubRoles]   = useState<WorkSchedulePattern[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -40,7 +40,7 @@ export default function ScheduleApprovalPage() {
   const [acting,       setActing]       = useState(false);
   const [actionMsg,    setActionMsg]    = useState<{ ok: boolean; text: string } | null>(null);
 
-  // ── Load everything in one shot ───────────────────────────────────────────
+  // โ”€โ”€ Load everything in one shot โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   useEffect(() => {
     if (!scheduleId) return;
@@ -82,7 +82,7 @@ export default function ScheduleApprovalPage() {
     return () => { cancelled = true; };
   }, [scheduleId]);
 
-  // ── Approve / Reject ─────────────────────────────────────────────────────
+  // โ”€โ”€ Approve / Reject โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   async function handleApprove() {
     if (!scheduleId) return;
@@ -114,7 +114,7 @@ export default function ScheduleApprovalPage() {
     }
   }
 
-  // ── Early returns ─────────────────────────────────────────────────────────
+  // โ”€โ”€ Early returns โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   if (loading) return <PageSpinner />;
 
@@ -126,7 +126,7 @@ export default function ScheduleApprovalPage() {
           onClick={() => navigate('/schedules')}
           className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
         >
-          ← กลับ
+          โ กลับ
         </button>
       </div>
     );
@@ -134,7 +134,7 @@ export default function ScheduleApprovalPage() {
 
   if (!approval) return null;
 
-  // ── Derived ───────────────────────────────────────────────────────────────
+  // โ”€โ”€ Derived โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   const monthDays = getMonthDays(approval.month);
   const today     = toLocalIso(new Date());
@@ -148,7 +148,7 @@ export default function ScheduleApprovalPage() {
 
   const subRoleById = Object.fromEntries(subRoles.map((sr) => [sr.id, sr]));
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // โ”€โ”€ Render โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   return (
     <div className="p-4 lg:p-6 max-w-full">
@@ -160,14 +160,14 @@ export default function ScheduleApprovalPage() {
             onClick={() => navigate('/schedules')}
             className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
           >
-            ← กลับ
+            โ กลับ
           </button>
           <div>
             <h1 className="text-xl font-semibold text-gray-900">
               ตรวจสอบตารางเวร — {department?.nameTh ?? approval.departmentId}
             </h1>
             <p className="mt-0.5 text-sm text-gray-400">
-              เดือน {approval.month} · ส่งเมื่อ{' '}
+              เดือน {approval.month} ยท สจงเมืจอ{' '}
               {new Date(approval.submittedAt).toLocaleDateString('th-TH')}
             </p>
           </div>
@@ -194,7 +194,7 @@ export default function ScheduleApprovalPage() {
                   disabled={acting || !rejectReason.trim()}
                   className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40"
                 >
-                  {acting ? 'กำลังส่ง…' : 'ยืนยันปฏิเสธ'}
+                  {acting ? 'กำลังสจง…' : 'ยืนยันปฏิเสธ'}
                 </button>
                 <button
                   onClick={() => setRejectMode(false)}
@@ -210,7 +210,7 @@ export default function ScheduleApprovalPage() {
                   disabled={acting}
                   className="rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-40"
                 >
-                  {acting ? 'กำลังส่ง…' : 'อนุมัติ'}
+                  {acting ? 'กำลังสจง…' : 'อนุมัติ'}
                 </button>
                 <button
                   onClick={() => setRejectMode(true)}
@@ -240,7 +240,7 @@ export default function ScheduleApprovalPage() {
         </div>
       )}
 
-      {/* Schedule grid — read-only */}
+      {/* Schedule grid โ€” read-only */}
       {employees.length === 0 ? (
         <p className="py-16 text-center text-sm text-gray-400">ไม่มีพนักงานในแผนกนี้</p>
       ) : (
@@ -286,7 +286,7 @@ export default function ScheduleApprovalPage() {
                     )}
                   </td>
 
-                  {/* Day cells — read-only */}
+                  {/* Day cells โ€” read-only */}
                   {monthDays.map((date) => {
                     const d        = new Date(date + 'T00:00:00');
                     const dow      = d.getDay();
@@ -294,7 +294,7 @@ export default function ScheduleApprovalPage() {
                     const isPast   = date < today;
                     const rec      = flatSchedule[emp.id]?.[date];
 
-                    let badge: React.ReactNode = <span className="text-xs text-gray-200">—</span>;
+                    let badge: React.ReactNode = <span className="text-xs text-gray-200">โ€”</span>;
                     if (rec) {
                       if (rec.isDayOff) {
                         badge = (
@@ -352,3 +352,4 @@ export default function ScheduleApprovalPage() {
     </div>
   );
 }
+

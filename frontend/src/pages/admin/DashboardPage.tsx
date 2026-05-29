@@ -121,7 +121,7 @@ export default function DashboardPage() {
   // ── DEV ONLY ────────────────────────────────────────────────────────────────
   const [devResetting, setDevResetting] = useState(false);
 
-  async function handleDevReset(targetMode: 'FULL' | 'SIMPLE', deleteCurrentMonthData: boolean) {
+  async function handleDevReset(targetMode: 'NORMAL' | 'SIMPLE', deleteCurrentMonthData: boolean) {
     if (!window.confirm(
       `DEV: Switch to ${targetMode} with deleteCurrentMonthData=${deleteCurrentMonthData}?\n\n` +
       (deleteCurrentMonthData ? '⚠️  This permanently deletes current-month attendance + OT data.' : '⚠️  Mode will switch with mixed data — summaries may be incoherent.')
@@ -403,13 +403,13 @@ export default function DashboardPage() {
                 type="button"
                 disabled={settingsSaving}
                 onClick={async () => {
-                  const targetMode = mode === 'SIMPLE' ? 'FULL' : 'SIMPLE';
+                  const targetMode = mode === 'SIMPLE' ? 'NORMAL' : 'SIMPLE';
                   if (import.meta.env.DEV) {
                     await handleDevReset(targetMode, true);
                   } else {
                     setSettingsSaving(true);
                     try {
-                      await updateOrgSettings({ mode: targetMode });
+                      await updateOrgSettings(user!.branchId, { mode: targetMode });
                       refetch();
                     } finally {
                       setSettingsSaving(false);
@@ -441,7 +441,7 @@ export default function DashboardPage() {
                 onClick={async () => {
                   setSettingsSaving(true);
                   try {
-                    await updateOrgSettings({ requireManagerApproval: !requireManagerApproval });
+                    await updateOrgSettings(user!.branchId, { requireManagerApproval: !requireManagerApproval });
                     refetch();
                   } finally {
                     setSettingsSaving(false);
@@ -473,7 +473,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 disabled={devResetting}
-                onClick={() => handleDevReset('FULL', true)}
+                onClick={() => handleDevReset('NORMAL', true)}
                 style={{ padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, opacity: devResetting ? 0.5 : 1 }}
               >
                 DEV RESET → FULL (delete data)
@@ -489,7 +489,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 disabled={devResetting}
-                onClick={() => handleDevReset('FULL', false)}
+                onClick={() => handleDevReset('NORMAL', false)}
                 style={{ padding: '6px 14px', background: '#7f1d1d', color: '#fca5a5', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, opacity: devResetting ? 0.5 : 1 }}
               >
                 DEV BYPASS → FULL (keep data ⚠️)

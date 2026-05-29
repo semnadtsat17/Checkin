@@ -1,4 +1,4 @@
-/**
+﻿/**
  * leave.service.ts
  *
  * Pure domain service for leave requests.
@@ -21,16 +21,16 @@
  *   HR approves      → status: hr_approved   (employee is definitively on leave)
  *   Either rejects   → status: rejected
  *
- * TODO (Phase 2 of leave integration):
- *   When org-settings.requireManagerApproval === false, allow employees to
- *   skip directly from pending → hr_approved.  Import orgSettings.runtime
- *   here ONLY for that check — not for any engine selection.
+ * When org-settings.requireManagerApproval === false, a new leave request
+ * is auto-approved (pending → hr_approved) immediately at creation time.
+ * The LEAVE_APPROVED event (stage: 'hr') fires so the retroactive attendance
+ * sync subscriber runs for any existing attendance records in the leave range.
  */
 import type { UserRole } from '@hospital-hr/shared';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
-import { hasPermission } from '../../core/permissions';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 import type { UserRecord } from '../employees/employee.service';
 import {
   type LeaveRequest,
@@ -45,6 +45,7 @@ import {
   LEAVE_APPROVED,
   LEAVE_REJECTED,
 } from './leave.events';
+import { getEffectiveBranchSettings } from '../branch-settings/branchSettings.runtime';
 
 // ─── Repositories ─────────────────────────────────────────────────────────────
 
@@ -82,7 +83,7 @@ function verifyLeaveAccess(
   actorRole:   UserRole,
   targetUserId: string,
 ): void {
-  if (hasPermission(actorRole, 'hr')) return;
+  if (hasHrAccess(actorRole)) return;
   if (actorUserId === targetUserId)   return;
 
   if (hasPermission(actorRole, 'manager')) {
@@ -176,6 +177,29 @@ export const leaveService = {
     appendLeaveAudit(leave.id, 'CREATED', actorUserId, null, 'pending');
     leaveEvents.emit(LEAVE_CREATED, { leaveRequest: leave });
 
+    // Auto-approve when manager step is disabled for this employee's branch.
+    // The retroactive attendance sync subscriber will fire via LEAVE_APPROVED.
+    const employeeRecord = employeeStore.findById(targetUserId);
+    const requireApproval = employeeRecord
+      ? getEffectiveBranchSettings(employeeRecord.branchId).requireManagerApproval
+      : true;
+    if (!requireApproval) {
+      const autoApproved = leaveStore.updateById(leave.id, {
+        status:      'hr_approved',
+        approvedByHR: 'SYSTEM',
+      }) as LeaveRequest;
+
+      appendLeaveAudit(leave.id, 'APPROVED_BY_HR', 'SYSTEM', 'pending', 'hr_approved',
+        'Auto-approved: requireManagerApproval=false');
+      leaveEvents.emit(LEAVE_APPROVED, {
+        leaveRequest: autoApproved,
+        approvedBy:   'SYSTEM',
+        stage:        'hr',
+      });
+
+      return autoApproved;
+    }
+
     return leave;
   },
 
@@ -231,7 +255,7 @@ export const leaveService = {
     actorUserId: string,
     actorRole:   UserRole,
   ): LeaveRequest {
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       throw new AppError(403, 'Only HR or super_admin can give final approval', 'FORBIDDEN');
     }
 
@@ -287,7 +311,7 @@ export const leaveService = {
     }
 
     // Manager may only reject from 'pending'; HR may reject from either pre-terminal stage.
-    if (!hasPermission(actorRole, 'hr') && leave.status !== 'pending') {
+    if (!hasHrAccess(actorRole) && leave.status !== 'pending') {
       throw new AppError(
         403,
         'Managers can only reject pending requests; HR approval is required first',
@@ -343,6 +367,40 @@ export const leaveService = {
   },
 
   /**
+   * List all leave requests visible to the actor for approval review.
+   * HR/super_admin → all employees (optionally filtered by branchId).
+   * Manager        → scoped to their managed departments.
+   */
+  listForReview(
+    actorUserId: string,
+    actorRole:   UserRole,
+    filters:     Pick<LeaveFilters, 'status' | 'branchId'> = {},
+  ): LeaveRequest[] {
+    let visibleUserIds: Set<string> | null = null;
+    if (!hasHrAccess(actorRole)) {
+      const actor   = employeeStore.findById(actorUserId);
+      const managed = new Set<string>(actor?.managerDepartments ?? []);
+      visibleUserIds = new Set(
+        employeeStore.findAll((u) => managed.has(u.departmentId) && u.isActive).map((e) => e.id),
+      );
+    }
+
+    let branchUserIds: Set<string> | null = null;
+    if (filters.branchId) {
+      branchUserIds = new Set(
+        employeeStore.findAll((u) => u.branchId === filters.branchId).map((e) => e.id),
+      );
+    }
+
+    return leaveStore.findAll((r) => {
+      if (visibleUserIds && !visibleUserIds.has(r.userId)) return false;
+      if (branchUserIds  && !branchUserIds.has(r.userId))  return false;
+      if (filters.status && r.status !== filters.status)   return false;
+      return true;
+    }).sort((a, b) => b.startDate.localeCompare(a.startDate));
+  },
+
+  /**
    * List leave requests across employees within a date range.
    * HR/super_admin → all employees.
    * Manager        → scoped to their managed departments.
@@ -360,7 +418,7 @@ export const leaveService = {
 
     // Build the set of visible userIds for managers
     let visibleUserIds: Set<string> | null = null;
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       const actor   = employeeStore.findById(actorUserId);
       const managed = new Set<string>(actor?.managerDepartments ?? []);
       const employees = employeeStore.findAll(

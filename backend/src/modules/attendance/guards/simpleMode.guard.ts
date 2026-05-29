@@ -22,16 +22,18 @@
  *   • reporting           (report.service)
  */
 import { AppError } from '../../../shared/middleware/errorHandler';
-import { isSimpleMode } from '../../org-settings/orgSettings.runtime';
+import { getEffectiveBranchSettings } from '../../branch-settings/branchSettings.runtime';
 
 /**
- * Throws SIMPLE_MODE_RESTRICTED (403) when the organisation is in SIMPLE mode.
+ * Throws SIMPLE_MODE_RESTRICTED (403) when the branch is in SIMPLE attendance mode.
  *
- * @param operation  Human-readable name for the blocked action, used in the
- *                   error message returned to the client.
+ * @param operation  Human-readable name for the blocked action.
+ * @param branchId   Branch to check; when omitted the guard is a no-op (safe default).
  */
-export function assertNotSimpleMode(operation: string): void {
-  if (isSimpleMode()) {
+export function assertNotSimpleMode(operation: string, branchId?: string): void {
+  if (!branchId) return;
+  const mode = getEffectiveBranchSettings(branchId).attendanceMode;
+  if (mode === 'SIMPLE') {
     throw new AppError(
       403,
       `'${operation}' is not available in SIMPLE attendance mode`,

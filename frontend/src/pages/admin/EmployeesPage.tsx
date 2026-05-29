@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { User, UserRole, Branch, Department } from '@hospital-hr/shared';
+﻿import { useCallback, useEffect, useState } from 'react';
+import type { UserProfile, UserRole, Branch, Department } from '@hospital-hr/shared';
 import { ROLE_LEVEL, ROLE_ORDER } from '@hospital-hr/shared';
 import { useTranslation } from '../../i18n/useTranslation';
 import { useAuth } from '../../context/AuthContext';
@@ -9,12 +9,13 @@ import { deptApi } from '../../api/departments';
 import { Modal } from '../../components/ui/Modal';
 import { Spinner, PageSpinner } from '../../components/Spinner';
 
-// ─── Role badge ────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Role badge โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function RoleBadge({ role }: { role: UserRole }) {
   const colors: Record<UserRole, string> = {
     super_admin: 'bg-purple-100 text-purple-700',
-    hr:          'bg-blue-100 text-blue-700',
+    admin:       'bg-violet-100 text-violet-700',
+    hr_branch:   'bg-blue-100 text-blue-700',
     manager:     'bg-indigo-100 text-indigo-700',
     employee:    'bg-green-100 text-green-700',
     part_time:   'bg-orange-100 text-orange-700',
@@ -27,12 +28,12 @@ function RoleBadge({ role }: { role: UserRole }) {
   );
 }
 
-// ─── Employee form ────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Employee form โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function EmployeeForm({
   initial, branches, departments, onSave, onCancel,
 }: {
-  initial:     User | null;
+  initial:     UserProfile | null;
   branches:    Branch[];
   departments: Department[];
   onSave:      (dto: CreateEmployeeDto) => Promise<void>;
@@ -127,7 +128,7 @@ function EmployeeForm({
           onChange={e => set('departmentId', e.target.value)}
           className={inputCls}
         >
-          <option value="">—</option>
+          <option value="">โ€”</option>
           {departments.map(d => <option key={d.id} value={d.id}>{d.nameTh}</option>)}
         </select>
       </div>
@@ -135,7 +136,7 @@ function EmployeeForm({
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">{t('employee.branch')} *</label>
         <select value={form.branchId} onChange={e => set('branchId', e.target.value)} className={inputCls}>
-          <option value="">—</option>
+          <option value="">โ€”</option>
           {branches.map(b => <option key={b.id} value={b.id}>{b.nameTh}</option>)}
         </select>
       </div>
@@ -159,7 +160,7 @@ function EmployeeForm({
   );
 }
 
-// ─── TransferDepartmentModal ──────────────────────────────────────────────────
+// โ”€โ”€โ”€ TransferDepartmentModal โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 // Shown whenever HR changes an employee's department in the edit form.
 // HR must choose the effective date before the transfer is committed.
 
@@ -177,7 +178,7 @@ function TransferDepartmentModal({
   onConfirm,
   onCancel,
 }: {
-  employee:  User;
+  employee:  UserProfile;
   fromDept:  Department | undefined;
   toDept:    Department | undefined;
   onConfirm: (effectiveDate: string) => Promise<void>;
@@ -220,11 +221,15 @@ function TransferDepartmentModal({
         </div>
         <div className="flex items-center gap-2">
           <span className="w-20 flex-shrink-0 text-gray-500">จาก</span>
-          <span className="text-gray-700">{fromDept?.nameTh ?? '—'}</span>
+          <span className="text-gray-700">{fromDept?.nameTh ?? 'โ€”'}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-20 flex-shrink-0 text-gray-500"'}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-20 flex-shrink-0 text-gray-500">ไป</span>
-          <span className="font-semibold text-primary-700">{toDept?.nameTh ?? '—'}</span>
+          <span className="font-semibold text-primary-700">{toDept?.nameTh ?? '/span>
+          <span className="font-semibold text-primary-700">{toDept?.nameTh ?? 'โ€”'}</span>
         </div>
       </div>
 
@@ -260,7 +265,7 @@ function TransferDepartmentModal({
   );
 }
 
-// ─── Manage Departments Modal (HR → assigns departments to a manager) ──────────
+// โ”€โ”€โ”€ Manage Departments Modal (HR โ’ assigns departments to a manager) โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function ManageDepartmentsModal({
   manager,
@@ -268,7 +273,7 @@ function ManageDepartmentsModal({
   onSave,
   onClose,
 }: {
-  manager:        User;
+  manager:        UserProfile;
   allDepartments: Department[];
   onSave:         (departmentIds: string[]) => Promise<void>;
   onClose:        () => void;
@@ -350,30 +355,34 @@ function ManageDepartmentsModal({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Page โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 export default function EmployeesPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isHR = user ? ROLE_LEVEL[user.role] >= 4 : false;
+  const isHR         = user ? ROLE_LEVEL[user.role] >= 4 : false;
+  const isSuperAdmin  = user?.role === 'super_admin' || user?.role === 'admin';
 
-  const [items,   setItems]   = useState<User[]>([]);
+  const [items,   setItems]   = useState<UserProfile[]>([]);
   const [total,   setTotal]   = useState(0);
   const [page,    setPage]    = useState(1);
   const [search,  setSearch]  = useState('');
   const [role,    setRole]    = useState<UserRole | ''>('');
+  // Branch filter: super_admin/admin can switch; others are locked to own branch
+  const [filterBranchId, setFilterBranchId] = useState<string>(
+    isSuperAdmin ? '' : (user?.branchId ?? ''),
+  );
   const [loading, setLoading] = useState(true);
 
   const [branches,       setBranches]       = useState<Branch[]>([]);
   const [departments,    setDepartments]    = useState<Department[]>([]);
   const [showForm,       setShowForm]       = useState(false);
-  const [editing,        setEditing]        = useState<User | null>(null);
+  const [editing,        setEditing]        = useState<UserProfile | null>(null);
   const [tempPassword,   setTempPassword]   = useState<string | null>(null);
-  const [managingDepts,  setManagingDepts]  = useState<User | null>(null);
+  const [managingDepts,  setManagingDepts]  = useState<UserProfile | null>(null);
 
-  // Department-transfer confirmation modal state
   const [pendingTransfer, setPendingTransfer] = useState<{
-    employee:     User;
+    employee:     UserProfile;
     dto:          CreateEmployeeDto;
     newDeptId:    string;
   } | null>(null);
@@ -384,8 +393,9 @@ export default function EmployeesPage() {
     setLoading(true);
     try {
       const res = await employeeApi.list({
-        search:  search || undefined,
-        role:    role   || undefined,
+        search:   search         || undefined,
+        role:     role           || undefined,
+        branchId: filterBranchId || undefined,
         page,
         pageSize: PAGE_SIZE,
       });
@@ -393,7 +403,7 @@ export default function EmployeesPage() {
       setTotal(res.total);
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  }, [search, role, page]);
+  }, [search, role, filterBranchId, page]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -417,7 +427,7 @@ export default function EmployeesPage() {
         setPendingTransfer({ employee: editing, dto, newDeptId: dto.departmentId });
         return;
       }
-      // No department change — plain update
+      // No department change โ€” plain update
       await employeeApi.update(editing.id, dto);
       if (dto.role !== editing.role) {
         await employeeApi.assignRole(editing.id, { role: dto.role });
@@ -457,7 +467,7 @@ export default function EmployeesPage() {
     load();
   }
 
-  async function handleResetPassword(emp: User) {
+  async function handleResetPassword(emp: UserProfile) {
     try {
       const result = await employeeApi.resetPassword(emp.id);
       setTempPassword(result.temporaryPassword);
@@ -466,7 +476,7 @@ export default function EmployeesPage() {
     }
   }
 
-  async function handleToggleActive(emp: User) {
+  async function handleToggleActive(emp: UserProfile) {
     await employeeApi.update(emp.id, { isActive: !emp.isActive });
     load();
   }
@@ -516,6 +526,18 @@ export default function EmployeesPage() {
             <option key={r} value={r}>{t(`roles.${r}` as Parameters<typeof t>[0])}</option>
           ))}
         </select>
+        {isSuperAdmin && branches.length > 0 && (
+          <select
+            value={filterBranchId}
+            onChange={e => { setFilterBranchId(e.target.value); setPage(1); }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+          >
+            <option value="">{t('common.all')} ({t('nav.branches')})</option>
+            {branches.map(b => (
+              <option key={b.id} value={b.id}>{b.nameTh}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Table */}
@@ -685,3 +707,4 @@ export default function EmployeesPage() {
     </div>
   );
 }
+

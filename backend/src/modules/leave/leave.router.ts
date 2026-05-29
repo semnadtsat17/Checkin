@@ -1,4 +1,4 @@
-/**
+﻿/**
  * leave.router.ts
  *
  * Route definitions for the leave module.
@@ -24,10 +24,10 @@ router.use(authenticate);
 
 // ── Employee-facing ───────────────────────────────────────────────────────────
 // Any employee can submit a leave request for themselves.
-router.post('/', requireRole(['employee', 'part_time', 'manager', 'hr', 'super_admin']), ctrl.create);
+router.post('/', requireRole(['employee', 'part_time', 'super_admin', 'admin', 'hr_branch', 'manager']), ctrl.create);
 
 // List own records (employees) or dept/all records (manager+)
-router.get('/', requireRole(['employee', 'part_time', 'manager', 'hr', 'super_admin']), ctrl.list);
+router.get('/', requireRole(['employee', 'part_time', 'super_admin', 'admin', 'hr_branch', 'manager']), ctrl.list);
 
 // ── /range must come before /:id to avoid Express treating "range" as an id ──
 router.get('/range', requireRole('manager'), ctrl.listByDateRange);
@@ -37,7 +37,7 @@ router.get('/:id', requireRole('manager'), ctrl.getOne);
 
 // ── Approval / rejection ─────────────────────────────────────────────────────
 router.patch('/:id/approve-manager', requireRole('manager'), ctrl.approveByManager);
-router.patch('/:id/approve-hr',      requireRole('hr'),      ctrl.approveByHR);
+router.patch('/:id/approve-hr',      requireRole(['admin', 'hr_branch']),      ctrl.approveByHR);
 router.patch('/:id/reject',          requireRole('manager'), ctrl.reject);
 
 export default router;

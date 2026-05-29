@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { authenticate } from '../../shared/middleware/auth';
 import { requireRole } from '../../shared/middleware/requireRole'; // used for write routes
 import * as ctrl from './sub-role.controller';
@@ -12,8 +12,8 @@ router.get('/',    ctrl.list);
 router.get('/:id', ctrl.getOne);
 
 // ── Write (HR+) ───────────────────────────────────────────────────────────────
-router.post('/',    requireRole('hr'), ctrl.create);
-router.put('/:id',  requireRole('hr'), ctrl.update);
-router.delete('/:id', requireRole('hr'), ctrl.remove);
+router.post('/',    requireRole(['admin', 'hr_branch']), ctrl.create);
+router.put('/:id',  requireRole(['admin', 'hr_branch']), ctrl.update);
+router.delete('/:id', requireRole(['admin', 'hr_branch']), ctrl.remove);
 
 export default router;

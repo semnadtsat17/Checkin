@@ -5,13 +5,15 @@ import { employeeService, sanitizeUser } from '../employees/employee.service';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import type { UserRecord } from '../employees/employee.service';
-import type { User } from '@hospital-hr/shared';
+import type { UserProfile, Branch } from '@hospital-hr/shared';
+import { hasHrAccess } from '../../core/permissions';
 import type { AuthPayload } from '../../types/express';
 
 const SALT_ROUNDS = 10;
 
 // Re-uses the same employees collection as employee.service
-const store: IRepository<UserRecord> = new JsonRepository<UserRecord>('employees');
+const store:        IRepository<UserRecord> = new JsonRepository<UserRecord>('employees');
+const branchStore:  IRepository<Branch>    = new JsonRepository<Branch>('branches');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,11 +27,31 @@ export function generatePassword(length = 8): string {
   return result;
 }
 
+/** Slim branch shape returned to the frontend branch-picker. */
+export interface BranchSlim {
+  id:       string;
+  nameTh:   string;
+  nameEn:   string;
+  province: string | undefined;
+}
+
+function toBranchSlim(b: Branch): BranchSlim {
+  return { id: b.id, nameTh: b.nameTh, nameEn: b.nameEn, province: b.province };
+}
+
+/** Branches the user can access based on their role. */
+function accessibleBranches(record: UserRecord): Branch[] {
+  const all = branchStore.findAll(b => b.isActive);
+  if (record.role === 'super_admin' || record.role === 'admin') return all;
+  return all.filter(b => b.id === record.branchId);
+}
+
 // ─── Response shapes ──────────────────────────────────────────────────────────
 
 export interface LoginResponse {
   token:              string;
-  profile:            User;
+  profile:            UserProfile;
+  branches:           BranchSlim[];
   mustChangePassword: boolean;
 }
 
@@ -75,8 +97,50 @@ export const authService = {
     return {
       token:              signToken(payload),
       profile:            sanitizeUser(record),
+      branches:           accessibleBranches(record).map(toBranchSlim),
       mustChangePassword: record.mustChangePassword ?? false,
     };
+  },
+
+  /**
+   * Exchange current token for a branch-scoped token.
+   * super_admin/admin can switch to any active branch.
+   * Others can only select their own branch.
+   */
+  selectBranch(userId: string, branchId: string): { token: string; profile: UserProfile } {
+    const record = store.findById(userId);
+    if (!record || !record.isActive) {
+      throw new AppError(404, 'Employee not found', 'NOT_FOUND');
+    }
+
+    const branch = branchStore.findById(branchId);
+    if (!branch || !branch.isActive) {
+      throw new AppError(404, 'Branch not found', 'NOT_FOUND');
+    }
+
+    // Non-admin users can only select their own branch
+    if (!hasHrAccess(record.role) || (record.role === 'hr_branch' || record.role === 'manager')) {
+      if (record.branchId !== branchId) {
+        throw new AppError(403, 'You do not have access to this branch', 'FORBIDDEN');
+      }
+    }
+
+    const payload: AuthPayload = {
+      userId:       record.id,
+      role:         record.role,
+      branchId,
+      departmentId: record.departmentId,
+      employeeCode: record.employeeCode,
+    };
+
+    return { token: signToken(payload), profile: sanitizeUser(record) };
+  },
+
+  /** Returns branches accessible to the given user. */
+  listBranches(userId: string): BranchSlim[] {
+    const record = store.findById(userId);
+    if (!record) throw new AppError(404, 'Employee not found', 'NOT_FOUND');
+    return accessibleBranches(record).map(toBranchSlim);
   },
 
   /**

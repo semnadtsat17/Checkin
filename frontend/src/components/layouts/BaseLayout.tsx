@@ -5,7 +5,7 @@
  *   All roles → LEFT SIDEBAR, no bottom nav
  *
  * Mobile / Tablet (< lg):
- *   Employee/Part-time → bottom nav (5 tabs incl. โปรไฟล์)
+ *   Employee/Part-time → bottom nav (6 tabs)
  *   Manager+ → bottom nav ONLY on /checkin (4 tabs, no โปรไฟล์)
  *              sidebar accessible via hamburger
  *
@@ -34,6 +34,7 @@ function Ico({ d, cls = 'h-5 w-5' }: { d: string; cls?: string }) {
 // ─── Path constants ────────────────────────────────────────────────────────────
 
 const P = {
+  leave:       'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
   checkin:     'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
   history:     'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
   summary:     'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
@@ -51,6 +52,9 @@ const P = {
   subRoles:    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
   holidays:    'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
   approvals:   'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+  settings:    'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
+  overtime:    'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  transfer:    'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
   hamburger:   'M4 6h16M4 12h16M4 18h16',
   close:       'M6 18L18 6M6 6l12 12',
   globe:       'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129',
@@ -180,6 +184,9 @@ function EmployeeSidebarContent({
         <SideLink to="/my-schedule" icon={P.schedule}> {t('nav.schedule')}</SideLink>
         <SideLink to="/summary"     icon={P.summary}>  {t('attendance.summary.title')}</SideLink>
         <SideLink to="/history"     icon={P.history}>  {t('attendance.history')}</SideLink>
+        <SideLink to="/leave"          icon={P.leave}>    {t('nav.leave')}</SideLink>
+        <SideLink to="/overtime"       icon={P.overtime}> {t('nav.overtime')}</SideLink>
+        <SideLink to="/shift-transfer" icon={P.transfer}> {t('nav.shiftTransfer')}</SideLink>
       </nav>
       <SidebarFooter locale={locale} onToggleLocale={onToggleLocale} onLogout={onLogout} />
     </div>
@@ -200,6 +207,8 @@ function AdminSidebarContent({
     { path: '/dashboard',              label: t('nav.dashboard'),     icon: P.dashboard,   permission: 'ADMIN_ACCESS' },
     { path: '/attendance',             label: t('nav.attendance'),    icon: P.attendance,  permission: 'ATTENDANCE_VIEW' },
     { path: '/approval-dashboard',     label: 'อนุมัติคำขอ',          icon: P.approvals,   permission: 'APPROVALS_VIEW' },
+    { path: '/leave-approvals',        label: t('nav.leave'),         icon: P.leave,       permission: 'LEAVE_APPROVALS_VIEW' },
+    { path: '/overtime-approvals',     label: t('nav.overtime'),      icon: P.overtime,    permission: 'APPROVALS_VIEW' },
     { path: '/schedules',              label: 'จัดตารางเวร',          icon: P.schedMgr,    permission: 'SCHEDULES_VIEW' },
     { path: '/edit-requests',          label: t('editRequest.title'), icon: P.editReq,     permission: 'EDIT_REQUESTS_VIEW' },
     { path: '/reports',                label: t('nav.reports'),       icon: P.reports,     permission: 'REPORTS_VIEW' },
@@ -208,6 +217,7 @@ function AdminSidebarContent({
     { path: '/branches',               label: t('nav.branches'),      icon: P.branches,    permission: 'BRANCHES_MANAGE' },
     { path: '/work-schedule-patterns', label: t('workPattern.title'), icon: P.subRoles,    permission: 'WORK_PATTERNS_MANAGE' },
     { path: '/holidays',               label: t('holiday.title'),     icon: P.holidays,    permission: 'HOLIDAYS_MANAGE' },
+    { path: '/hr-settings',            label: 'ตั้งค่าระบบ HR',        icon: P.settings,    permission: 'SETTINGS_MANAGE' },
   ] satisfies Array<{ path: string; label: string; icon: string; permission: PermissionKey }>)
     .filter(i => hasPermission(userRole, i.permission));
 
@@ -237,6 +247,9 @@ function AdminSidebarContent({
         <SideLink to="/my-schedule" icon={P.schedule} onClick={onNavClick}>{t('nav.schedule')}</SideLink>
         <SideLink to="/summary"     icon={P.summary}  onClick={onNavClick}>{t('attendance.summary.title')}</SideLink>
         <SideLink to="/history"     icon={P.history}  onClick={onNavClick}>{t('attendance.history')}</SideLink>
+        <SideLink to="/leave"           icon={P.leave}     onClick={onNavClick}>{t('nav.leave')}</SideLink>
+        <SideLink to="/overtime"        icon={P.overtime}  onClick={onNavClick}>{t('nav.overtime')}</SideLink>
+        <SideLink to="/shift-transfer"  icon={P.transfer}  onClick={onNavClick}>{t('nav.shiftTransfer')}</SideLink>
 
         {/* Admin tools */}
         {adminTools.length > 0 && (
@@ -265,8 +278,9 @@ const EMPLOYEE_TABS: TabDef[] = [
   { path: '/employee-dashboard', labelKey: 'nav.dashboard',            icon: P.dashboard },
   { path: '/checkin',            labelKey: 'attendance.checkIn',       icon: P.checkin },
   { path: '/history',            labelKey: 'attendance.history',       icon: P.history },
-  { path: '/summary',            labelKey: 'attendance.summary.title', icon: P.summary },
   { path: '/my-schedule',        labelKey: 'nav.schedule',             icon: P.schedule },
+  { path: '/leave',              labelKey: 'nav.leave',                icon: P.leave    },
+  { path: '/overtime',           labelKey: 'nav.overtime',             icon: P.overtime },
 ];
 
 const ADMIN_TABS: TabDef[] = [

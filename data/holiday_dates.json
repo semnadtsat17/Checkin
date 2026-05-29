@@ -1,0 +1,218 @@
+[
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันขึ้นปีใหม่",
+    "date": "01-01",
+    "enabled": true,
+    "id": "1bd876a6-afe1-4df2-a23e-3e49f9f59e50",
+    "createdAt": "2026-03-19T11:17:34.537Z",
+    "updatedAt": "2026-03-19T11:17:34.537Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันจักรี",
+    "date": "04-06",
+    "enabled": true,
+    "id": "f4bb676c-03cc-4719-a189-c773cb1e8ec1",
+    "createdAt": "2026-03-19T11:17:34.550Z",
+    "updatedAt": "2026-03-19T11:17:34.550Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันสงกรานต์",
+    "date": "04-13",
+    "enabled": true,
+    "id": "41a568ad-33b0-4af2-8e7b-54a362568637",
+    "createdAt": "2026-03-19T11:17:34.559Z",
+    "updatedAt": "2026-03-19T11:17:34.559Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันสงกรานต์ (วันครอบครัว)",
+    "date": "04-14",
+    "enabled": true,
+    "id": "f5481149-78b2-464d-9795-996ee24abeef",
+    "createdAt": "2026-03-19T11:17:34.569Z",
+    "updatedAt": "2026-03-19T11:17:34.569Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันสงกรานต์",
+    "date": "04-15",
+    "enabled": true,
+    "id": "113b5662-7c61-4b59-b65a-8df5a737226b",
+    "createdAt": "2026-03-19T11:17:34.579Z",
+    "updatedAt": "2026-03-19T11:17:34.579Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันแรงงานแห่งชาติ",
+    "date": "05-01",
+    "enabled": true,
+    "id": "5b99db46-3ff1-495a-b9af-18ad62c47907",
+    "createdAt": "2026-03-19T11:17:34.590Z",
+    "updatedAt": "2026-03-19T11:17:34.590Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันฉัตรมงคล",
+    "date": "05-04",
+    "enabled": true,
+    "id": "23ec50e8-f54e-4fa5-b850-262392642309",
+    "createdAt": "2026-03-19T11:17:34.599Z",
+    "updatedAt": "2026-03-19T11:17:34.599Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันเฉลิมพระชนมพรรษา รัชกาลที่ 10",
+    "date": "07-28",
+    "enabled": true,
+    "id": "2a14264b-3ae2-4169-ac1b-c5f556644dbc",
+    "createdAt": "2026-03-19T11:17:34.609Z",
+    "updatedAt": "2026-03-19T11:17:34.609Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี",
+    "date": "08-12",
+    "enabled": true,
+    "id": "856e13d3-0b01-455a-a1fb-b38a22e07c79",
+    "createdAt": "2026-03-19T11:17:34.620Z",
+    "updatedAt": "2026-03-19T11:17:34.620Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันปิยมหาราช",
+    "date": "10-23",
+    "enabled": true,
+    "id": "94d290da-3475-4e42-a4f7-7328ff2cbdda",
+    "createdAt": "2026-03-19T11:17:34.631Z",
+    "updatedAt": "2026-03-19T11:17:34.631Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันชาติ / วันพ่อแห่งชาติ",
+    "date": "12-05",
+    "enabled": true,
+    "id": "ef142552-ecd5-4f2f-8873-a7440c7b1b8f",
+    "createdAt": "2026-03-19T11:17:34.645Z",
+    "updatedAt": "2026-03-19T11:17:34.645Z"
+  },
+  {
+    "typeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c",
+    "name": "วันรัฐธรรมนูญ",
+    "date": "12-10",
+    "enabled": true,
+    "id": "4c73b28c-29a4-47aa-935a-b4d9f3e29bb0",
+    "createdAt": "2026-03-19T11:17:34.658Z",
+    "updatedAt": "2026-03-19T11:17:34.658Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันขึ้นปีใหม่",
+    "date": "01-01",
+    "enabled": true,
+    "id": "95b38ceb-a918-4860-a5e6-c8a630cfd40d",
+    "createdAt": "2026-05-06T20:25:15.788Z",
+    "updatedAt": "2026-05-06T20:25:15.788Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันจักรี",
+    "date": "04-06",
+    "enabled": true,
+    "id": "01ae1212-8fc1-4be8-bea3-1a7cc716bb71",
+    "createdAt": "2026-05-06T20:25:15.799Z",
+    "updatedAt": "2026-05-06T20:25:15.799Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันสงกรานต์",
+    "date": "04-13",
+    "enabled": true,
+    "id": "6da0e341-2422-4b72-b762-9fee4d0e8119",
+    "createdAt": "2026-05-06T20:25:15.813Z",
+    "updatedAt": "2026-05-06T20:25:15.813Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันสงกรานต์ (วันครอบครัว)",
+    "date": "04-14",
+    "enabled": true,
+    "id": "52100d70-3c8a-4852-a1ee-6d777cde7785",
+    "createdAt": "2026-05-06T20:25:15.826Z",
+    "updatedAt": "2026-05-06T20:25:15.826Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันสงกรานต์",
+    "date": "04-15",
+    "enabled": true,
+    "id": "8f69eccf-97ac-42b3-bb4f-0827d20acd2a",
+    "createdAt": "2026-05-06T20:25:15.840Z",
+    "updatedAt": "2026-05-06T20:25:15.840Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันแรงงานแห่งชาติ",
+    "date": "05-01",
+    "enabled": true,
+    "id": "9a1caf36-08a7-4e76-bcb7-c96148e1fc2a",
+    "createdAt": "2026-05-06T20:25:15.849Z",
+    "updatedAt": "2026-05-06T20:25:15.849Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันฉัตรมงคล",
+    "date": "05-04",
+    "enabled": true,
+    "id": "3eb36c99-488e-4755-bbe9-845a6a6b718c",
+    "createdAt": "2026-05-06T20:25:15.862Z",
+    "updatedAt": "2026-05-06T20:25:15.862Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันเฉลิมพระชนมพรรษา รัชกาลที่ 10",
+    "date": "07-28",
+    "enabled": true,
+    "id": "9e56f3eb-7008-431e-9ec2-0abfbfb17fe2",
+    "createdAt": "2026-05-06T20:25:15.874Z",
+    "updatedAt": "2026-05-06T20:25:15.874Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี",
+    "date": "08-12",
+    "enabled": true,
+    "id": "8cce9403-aa6b-40d2-a1e5-29423f78629a",
+    "createdAt": "2026-05-06T20:25:15.886Z",
+    "updatedAt": "2026-05-06T20:25:15.886Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันปิยมหาราช",
+    "date": "10-23",
+    "enabled": true,
+    "id": "33879fda-a5b5-4c8f-b735-fcbafdc269ee",
+    "createdAt": "2026-05-06T20:25:15.899Z",
+    "updatedAt": "2026-05-06T20:25:15.899Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันชาติ / วันพ่อแห่งชาติ",
+    "date": "12-05",
+    "enabled": true,
+    "id": "e1e00071-78c6-4d2e-b071-def4d72eeed4",
+    "createdAt": "2026-05-06T20:25:15.911Z",
+    "updatedAt": "2026-05-06T20:25:15.911Z"
+  },
+  {
+    "typeId": "65886d55-725d-4592-bdbb-94959b46bfc3",
+    "name": "วันรัฐธรรมนูญ",
+    "date": "12-10",
+    "enabled": true,
+    "id": "9d012de1-bd5e-4d6d-a9fc-b2a44b4ff184",
+    "createdAt": "2026-05-06T20:25:15.923Z",
+    "updatedAt": "2026-05-06T20:25:15.923Z"
+  }
+]

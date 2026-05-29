@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+﻿import { Request, Response, NextFunction } from 'express';
 import type { UserRole } from '@hospital-hr/shared';
-import { hasPermission } from '../../core/permissions';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 import { ok, created, noContent, paginated } from '../../shared/utils/response';
 import { employeeService } from './employee.service';
 import { authService } from '../auth/auth.service';
@@ -14,7 +14,7 @@ import { authService } from '../auth/auth.service';
 export async function list(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user!;
-    const allowCrossBranch = hasPermission(user.role, 'hr');
+    const allowCrossBranch = hasHrAccess(user.role);
 
     const branchId = allowCrossBranch
       ? (req.query.branchId as string | undefined)

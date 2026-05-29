@@ -1,26 +1,41 @@
-import bcrypt from 'bcryptjs';
-import type { User, UserRole, DepartmentAssignment, Department, WorkSchedulePattern } from '@hospital-hr/shared';
+﻿import bcrypt from 'bcryptjs';
+import type { User, UserProfile, UserRole, DepartmentAssignment, Department, WorkSchedulePattern } from '@hospital-hr/shared';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
 import { isHigherThan, hasPermission } from '../../core/permissions';
 import { generatePassword } from '../auth/auth.service';
 
-// ─── Internal record (extends User with auth fields) ──────────────────────────
-// passwordHash is NEVER returned in API responses — stripped by sanitizeUser().
+// โ”€โ”€โ”€ Internal record โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+// Flat storage shape: User personal data + per-branch employment fields.
+// In the multi-branch architecture these will move to BranchMembership, but
+// for the current single-branch store they live here.
+// passwordHash is NEVER returned in API responses โ€” stripped by sanitizeUser().
 
 export interface UserRecord extends User {
-  passwordHash?: string;
+  // Per-branch employment data (from BranchMembership in multi-branch)
+  role:                   UserRole;
+  employeeCode:           string;
+  departmentId:           string;
+  branchId:               string;
+  positionId?:            string;
+  workSchedulePatternId?: string;
+  monthlyHoursOverride?:  number;
+  managerDepartments?:    string[];
+  branchStartDate?:       string;   // YYYY-MM-DD
+
+  // Auth (never sent to client)
+  passwordHash?:          string;
 }
 
 /** Strip auth-sensitive fields before sending to client. */
-export function sanitizeUser(record: UserRecord): User {
+export function sanitizeUser(record: UserRecord): UserProfile {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash: _ph, ...safe } = record;
-  return safe;
+  return safe as UserProfile;
 }
 
-// ─── DTOs ─────────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ DTOs โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 export interface CreateEmployeeDto {
   firstNameTh: string;
@@ -69,11 +84,11 @@ export interface EmployeeFilters {
   pageSize?: number;
 }
 
-// ─── Storage ──────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Storage โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 const store: IRepository<UserRecord> = new JsonRepository<UserRecord>('employees');
 
-// ─── Transfer support stores ──────────────────────────────────────────────────
+// โ”€โ”€โ”€ Transfer support stores โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 /** Audit trail for department transfers. */
 const assignmentStore: IRepository<DepartmentAssignment> = new JsonRepository<DepartmentAssignment>('department_assignments');
@@ -85,7 +100,7 @@ const deptStore: IRepository<Department> = new JsonRepository<Department>('depar
 const patternStore: IRepository<WorkSchedulePattern> = new JsonRepository<WorkSchedulePattern>('sub_roles');
 
 // Minimal shape needed to manipulate schedule_days rows without importing
-// schedule.service (which already imports employee.service → circular risk).
+// schedule.service (which already imports employee.service โ’ circular risk).
 interface _ScheduleDayRow {
   id:               string;
   userId:           string;
@@ -109,7 +124,7 @@ function _toIsoLocal(d: Date): string {
   return `${y}-${m}-${dd}`;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Helpers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 function generateEmployeeCode(): string {
   const all = store.findAll();
@@ -127,7 +142,7 @@ function isValidDate(d?: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
 }
 
-// ─── Service ──────────────────────────────────────────────────────────────────
+// โ”€โ”€โ”€ Service โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
 export const employeeService = {
 
@@ -165,13 +180,13 @@ export const employeeService = {
     };
   },
 
-  findById(id: string): User {
+  findById(id: string): UserProfile {
     const record = store.findById(id);
     if (!record) throw new AppError(404, `Employee '${id}' not found`, 'NOT_FOUND');
     return sanitizeUser(record);
   },
 
-  /** Internal method — returns full record including passwordHash. Used by auth module. */
+  /** Internal method โ€” returns full record including passwordHash. Used by auth module. */
   findRecordById(id: string): UserRecord {
     const record = store.findById(id);
     if (!record) throw new AppError(404, `Employee '${id}' not found`, 'NOT_FOUND');
@@ -247,7 +262,7 @@ export const employeeService = {
     return { employee: sanitizeUser(record), temporaryPassword };
   },
 
-  update(id: string, dto: UpdateEmployeeDto): User {
+  update(id: string, dto: UpdateEmployeeDto): UserProfile {
     this.findById(id); // throws 404
 
     if (dto.email) {
@@ -284,14 +299,14 @@ export const employeeService = {
 
   /**
    * Assign or change an employee's role + subRole.
-   * Separated from update() for auditability — role changes are high-privilege actions.
+   * Separated from update() for auditability โ€” role changes are high-privilege actions.
    *
    * Guards:
    *   - Actor cannot assign a role higher than or equal to their own
    *     (only super_admin can promote to super_admin)
    */
-  assignRole(id: string, dto: AssignRoleDto, actorRole: UserRole): User {
-    const target = this.findById(id);
+  assignRole(id: string, dto: AssignRoleDto, actorRole: UserRole): UserProfile {
+    const target = this.findRecordById(id);
 
     if (!dto.role) throw new AppError(400, 'role is required', 'VALIDATION_ERROR');
 
@@ -299,7 +314,7 @@ export const employeeService = {
     if (!isHigherThan(actorRole, dto.role) && actorRole !== 'super_admin') {
       throw new AppError(
         403,
-        `You cannot assign role '${dto.role}' — it is equal to or higher than your own`,
+        `You cannot assign role '${dto.role}' โ€” it is equal to or higher than your own`,
         'FORBIDDEN'
       );
     }
@@ -327,10 +342,10 @@ export const employeeService = {
 
   /**
    * Set the list of departments a manager is allowed to manage.
-   * Replaces the full array — send [] to remove all assignments.
+   * Replaces the full array โ€” send [] to remove all assignments.
    * Only HR+ may call this, and only on users with role === 'manager'.
    */
-  updateManagerDepartments(id: string, departmentIds: string[]): User {
+  updateManagerDepartments(id: string, departmentIds: string[]): UserProfile {
     const target = store.findById(id);
     if (!target) throw new AppError(404, `Employee '${id}' not found`, 'NOT_FOUND');
     if (target.role !== 'manager') {
@@ -347,7 +362,7 @@ export const employeeService = {
     store.softDelete(id);
   },
 
-  // ── Department Transfer ───────────────────────────────────────────────────────
+  // โ”€โ”€ Department Transfer โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
   /**
    * Transfer an employee to a new department with schedule migration.
@@ -356,8 +371,8 @@ export const employeeService = {
    *   1. Create a DepartmentAssignment audit record.
    *   2. Update employee.departmentId immediately (backward compat).
    *   3. Delete ALL schedule_days records for this user where date >= effectiveDate.
-   *   4a. WEEKLY_WORKING_TIME dept → auto-fill 90 days of working / day-off markers.
-   *   4b. SHIFT_TIME dept          → leave empty; manager assigns shifts later.
+   *   4a. WEEKLY_WORKING_TIME dept โ’ auto-fill 90 days of working / day-off markers.
+   *   4b. SHIFT_TIME dept          โ’ leave empty; manager assigns shifts later.
    *   Past records (date < effectiveDate) are NEVER touched.
    */
   transferDepartment(
@@ -366,7 +381,7 @@ export const employeeService = {
     effectiveDate:   string,
     actorUserId:     string,
   ): { employee: User; assignment: DepartmentAssignment } {
-    // ── Validate ──────────────────────────────────────────────────────────────
+    // โ”€โ”€ Validate โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
     const emp = store.findById(userId);
     if (!emp) throw new AppError(404, `Employee '${userId}' not found`, 'NOT_FOUND');
 
@@ -384,12 +399,12 @@ export const employeeService = {
     if (effectiveDate < todayIso) {
       throw new AppError(
         400,
-        `effectiveDate (${effectiveDate}) cannot be in the past — past schedules are immutable`,
+        `effectiveDate (${effectiveDate}) cannot be in the past โ€” past schedules are immutable`,
         'PAST_DATE_IMMUTABLE'
       );
     }
 
-    // ── Step 1: Audit record ──────────────────────────────────────────────────
+    // โ”€โ”€ Step 1: Audit record โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
     const assignment = assignmentStore.create({
       userId,
       fromDepartmentId: emp.departmentId,
@@ -398,11 +413,11 @@ export const employeeService = {
       transferredBy:    actorUserId,
     } as Omit<DepartmentAssignment, 'id' | 'createdAt' | 'updatedAt'>);
 
-    // ── Step 2: Update employee record ────────────────────────────────────────
+    // โ”€โ”€ Step 2: Update employee record โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
     const updated = store.updateById(userId, { departmentId: newDepartmentId }) as UserRecord;
 
-    // ── Step 3: Delete schedule records on or after effectiveDate ─────────────
-    // Records BEFORE effectiveDate are never touched — past schedules are immutable.
+    // โ”€โ”€ Step 3: Delete schedule records on or after effectiveDate โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+    // Records BEFORE effectiveDate are never touched โ€” past schedules are immutable.
     const futureDays = scheduleDayStore.findAll(
       (d) => d.userId === userId && d.date >= effectiveDate
     );
@@ -410,7 +425,7 @@ export const employeeService = {
       scheduleDayStore.deleteById(day.id);
     }
 
-    // ── Step 4: Reload dept + pattern after the employee update ───────────────
+    // โ”€โ”€ Step 4: Reload dept + pattern after the employee update โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
     // Re-read from the store so we are guaranteed to use the current persisted
     // values, not an in-memory reference that may be stale.
     const freshDept    = deptStore.findById(newDepartmentId);
@@ -420,7 +435,7 @@ export const employeeService = {
       : null;
 
     if (pattern?.type === 'WEEKLY_WORKING_TIME') {
-      // Case A: WEEKLY_WORKING_TIME — generate 90 days from effectiveDate.
+      // Case A: WEEKLY_WORKING_TIME โ€” generate 90 days from effectiveDate.
       // weeklySchedule MUST be configured; silently producing all-day-off records
       // when it is missing would be a data bug, so we throw instead.
       if (!pattern.weeklySchedule?.length) {
@@ -432,7 +447,7 @@ export const employeeService = {
         );
       }
 
-      // Build dow → WeeklyScheduleDay lookup and generate one record per calendar day.
+      // Build dow โ’ WeeklyScheduleDay lookup and generate one record per calendar day.
       // weeklyStartTime/weeklyEndTime are stored directly so the resolver can read
       // from schedule_days without re-deriving from the live pattern later.
       const dowMap = new Map(pattern.weeklySchedule.map((d) => [d.dayOfWeek, d]));
@@ -458,7 +473,7 @@ export const employeeService = {
         cur.setDate(cur.getDate() + 1);
       }
     }
-    // Case B (SHIFT_TIME / no pattern): records deleted above — manager assigns shifts later.
+    // Case B (SHIFT_TIME / no pattern): records deleted above โ€” manager assigns shifts later.
 
     return { employee: sanitizeUser(updated), assignment };
   },

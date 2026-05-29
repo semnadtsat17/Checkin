@@ -97,4 +97,5 @@ export interface LeaveFilters {
   leaveType?: LeaveType;
   from?:      string;             // startDate >= from
   to?:        string;             // endDate   <= to
+  branchId?:  string;
 }

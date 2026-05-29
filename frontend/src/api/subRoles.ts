@@ -20,6 +20,7 @@ export interface WeeklyScheduleDayDto {
 export interface CreateWorkSchedulePatternDto {
   nameTh:               string;
   nameEn?:              string;
+  branchId?:            string;
   forRole:              UserRole;
   type?:                WorkSchedulePatternType;
   monthlyWorkingHours:  number;
@@ -39,6 +40,7 @@ export interface UpdateWorkSchedulePatternDto {
 }
 
 export interface WorkSchedulePatternFilters {
+  branchId?: string;
   forRole?:  UserRole;
   isActive?: boolean;
 }
@@ -56,6 +58,7 @@ export type SubRoleFilters = WorkSchedulePatternFilters;
 export const workSchedulePatternApi = {
   list(f: WorkSchedulePatternFilters = {}) {
     const p = new URLSearchParams();
+    if (f.branchId)               p.set('branchId', f.branchId);
     if (f.forRole)                p.set('forRole',  f.forRole);
     if (f.isActive !== undefined) p.set('isActive', String(f.isActive));
     const qs = p.toString() ? `?${p}` : '';

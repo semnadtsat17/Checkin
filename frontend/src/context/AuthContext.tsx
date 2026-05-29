@@ -5,18 +5,26 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import type { User } from '@hospital-hr/shared';
-import { authApi } from '../api/auth';
+import type { UserProfile } from '@hospital-hr/shared';
+import { authApi, type BranchSlim } from '../api/auth';
 
 // ─── Shape ────────────────────────────────────────────────────────────────────
 
+export interface LoginResult {
+  needsBranchSelect: boolean;
+  mustChangePassword: boolean;
+  role: string;
+}
+
 interface AuthState {
-  user:               User | null;
+  user:               UserProfile | null;
   token:              string | null;
   isAuthenticated:    boolean;
   isLoading:          boolean;
   mustChangePassword: boolean;
-  login:              (email: string, password: string) => Promise<void>;
+  pendingBranches:    BranchSlim[] | null;   // non-null = branch selection required
+  login:              (email: string, password: string) => Promise<LoginResult>;
+  selectBranch:       (branchId: string) => Promise<void>;
   logout:             () => void;
   clearMustChange:    () => void;
 }
@@ -28,10 +36,11 @@ const AuthContext = createContext<AuthState | null>(null);
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,               setUser]               = useState<User | null>(null);
+  const [user,               setUser]               = useState<UserProfile | null>(null);
   const [token,              setToken]              = useState<string | null>(null);
   const [isLoading,          setIsLoading]          = useState(true);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [pendingBranches,    setPendingBranches]    = useState<BranchSlim[] | null>(null);
 
   // Rehydrate from localStorage on first mount
   useEffect(() => {
@@ -42,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedToken && storedUser) {
       try {
         setToken(storedToken);
-        setUser(JSON.parse(storedUser) as User);
+        setUser(JSON.parse(storedUser) as UserProfile);
         setMustChangePassword(storedMust === 'true');
       } catch {
         localStorage.removeItem('token');
@@ -53,14 +62,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { token: newToken, profile, mustChangePassword: must } = await authApi.login(email, password);
-    localStorage.setItem('token',           newToken);
-    localStorage.setItem('auth_user',       JSON.stringify(profile));
-    localStorage.setItem('must_change_pwd', String(must));
-    setToken(newToken);
-    setUser(profile);
-    setMustChangePassword(must);
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
+    const { token: newToken, profile, branches, mustChangePassword: must } =
+      await authApi.login(email, password);
+
+    if (branches.length <= 1) {
+      // Auto-select the single branch (or no branch needed) — exchange for branch-scoped token
+      localStorage.setItem('token', newToken);
+      const targetBranchId = branches[0]?.id ?? profile.branchId;
+      const { token: branchToken, profile: branchProfile } =
+        await authApi.selectBranch(targetBranchId);
+      localStorage.setItem('token',           branchToken);
+      localStorage.setItem('auth_user',       JSON.stringify(branchProfile));
+      localStorage.setItem('must_change_pwd', String(must));
+      setToken(branchToken);
+      setUser(branchProfile);
+      setMustChangePassword(must);
+      return { needsBranchSelect: false, mustChangePassword: must, role: branchProfile.role };
+    } else {
+      // Multiple branches — store pre-branch token temporarily, show picker
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+      setUser(profile);
+      setMustChangePassword(must);
+      setPendingBranches(branches);
+      return { needsBranchSelect: true, mustChangePassword: must, role: profile.role };
+    }
+  }, []);
+
+  const selectBranch = useCallback(async (branchId: string) => {
+    const { token: branchToken, profile: branchProfile } =
+      await authApi.selectBranch(branchId);
+    localStorage.setItem('token',           branchToken);
+    localStorage.setItem('auth_user',       JSON.stringify(branchProfile));
+    setToken(branchToken);
+    setUser(branchProfile);
+    setPendingBranches(null);
   }, []);
 
   const logout = useCallback(() => {
@@ -70,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setUser(null);
     setMustChangePassword(false);
+    setPendingBranches(null);
   }, []);
 
   const clearMustChange = useCallback(() => {
@@ -86,7 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isAuthenticated: !!token, isLoading, mustChangePassword, login, logout, clearMustChange }}
+      value={{
+        user, token, isAuthenticated: !!token, isLoading, mustChangePassword,
+        pendingBranches, login, selectBranch, logout, clearMustChange,
+      }}
     >
       {children}
     </AuthContext.Provider>

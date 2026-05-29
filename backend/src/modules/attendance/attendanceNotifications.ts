@@ -1,4 +1,4 @@
-/**
+﻿/**
  * attendanceNotifications.ts
  *
  * Domain-specific notification triggers for the attendance approval workflow.
@@ -36,7 +36,7 @@ function getEmployeeName(employeeId: string): string {
 function getManagerIds(): string[] {
   return employeeStore
     .findAll((u) =>
-      (u.role === 'manager' || u.role === 'hr') && u.isActive !== false,
+      (u.role === 'manager' || u.role === 'admin' || u.role === 'hr_branch') && u.isActive !== false,
     )
     .map((u) => u.id);
 }

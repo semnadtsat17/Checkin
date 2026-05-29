@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { WorkSchedulePattern, WorkSchedulePatternType, UserRole } from '@hospital-hr/shared';
+import type { WorkSchedulePattern, WorkSchedulePatternType, UserRole, Branch } from '@hospital-hr/shared';
 import { ROLE_LEVEL, ROLE_ORDER } from '@hospital-hr/shared';
 import { useTranslation } from '../../i18n/useTranslation';
 import { useAuth } from '../../context/AuthContext';
 import { workSchedulePatternApi, type CreateWorkSchedulePatternDto, type ShiftDto, type WeeklyScheduleDayDto } from '../../api/subRoles';
+import { branchApi } from '../../api/branches';
 import { Modal } from '../../components/ui/Modal';
 import { Spinner, PageSpinner } from '../../components/Spinner';
 import { TimePicker } from '../../components/ui/TimePicker';
@@ -309,27 +310,39 @@ function WorkSchedulePatternForm({
 export default function SubRolesPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isHR = user ? ROLE_LEVEL[user.role] >= 4 : false;
+  const isHR          = user ? ROLE_LEVEL[user.role] >= 4 : false;
+  const isSuperAdmin  = user?.role === 'super_admin' || user?.role === 'admin';
 
-  const [items,   setItems]   = useState<WorkSchedulePattern[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items,          setItems]          = useState<WorkSchedulePattern[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [branches,       setBranches]       = useState<Branch[]>([]);
+  const [filterBranchId, setFilterBranchId] = useState<string>(
+    isSuperAdmin ? '' : (user?.branchId ?? ''),
+  );
   const [showForm, setShowForm] = useState(false);
   const [editing,  setEditing]  = useState<WorkSchedulePattern | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await workSchedulePatternApi.list();
+      const res = await workSchedulePatternApi.list({ branchId: filterBranchId || undefined });
       setItems(res);
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  }, []);
+  }, [filterBranchId]);
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (isSuperAdmin) {
+      branchApi.list().then(setBranches).catch(() => {});
+    }
+  }, [isSuperAdmin]);
+
   async function handleSave(dto: CreateWorkSchedulePatternDto) {
-    if (editing) await workSchedulePatternApi.update(editing.id, dto);
-    else         await workSchedulePatternApi.create(dto);
+    const withBranch = { ...dto, branchId: filterBranchId || undefined };
+    if (editing) await workSchedulePatternApi.update(editing.id, withBranch);
+    else         await workSchedulePatternApi.create(withBranch);
     setShowForm(false);
     load();
   }
@@ -356,6 +369,20 @@ export default function SubRolesPage() {
           </button>
         )}
       </div>
+
+      {/* Branch filter (super_admin only) */}
+      {isSuperAdmin && branches.length > 0 && (
+        <div className="mb-4">
+          <select
+            value={filterBranchId}
+            onChange={e => setFilterBranchId(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+          >
+            <option value="">{t('common.all')} ({t('nav.branches')})</option>
+            {branches.map(b => <option key={b.id} value={b.id}>{b.nameTh}</option>)}
+          </select>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100">

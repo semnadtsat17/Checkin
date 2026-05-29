@@ -1,4 +1,4 @@
-import type { User, UserRole, DepartmentAssignment, PaginatedResponse } from '@hospital-hr/shared';
+﻿import type { UserProfile, UserRole, DepartmentAssignment, PaginatedResponse } from '@hospital-hr/shared';
 import { apiFetch } from './client';
 
 export interface CreateEmployeeDto {
@@ -46,15 +46,15 @@ export const employeeApi = {
     if (f.page)                    p.set('page',         String(f.page));
     if (f.pageSize)                p.set('pageSize',     String(f.pageSize));
     const qs = p.toString() ? `?${p}` : '';
-    return apiFetch<PaginatedResponse<User>>(`/api/employees${qs}`);
+    return apiFetch<PaginatedResponse<UserProfile>>(`/api/employees${qs}`);
   },
 
   getById(id: string) {
-    return apiFetch<User>(`/api/employees/${id}`);
+    return apiFetch<UserProfile>(`/api/employees/${id}`);
   },
 
   create(dto: CreateEmployeeDto) {
-    return apiFetch<{ employee: User; temporaryPassword: string }>('/api/employees', { method: 'POST', body: JSON.stringify(dto) });
+    return apiFetch<{ employee: UserProfile; temporaryPassword: string }>('/api/employees', { method: 'POST', body: JSON.stringify(dto) });
   },
 
   resetPassword(id: string) {
@@ -62,15 +62,15 @@ export const employeeApi = {
   },
 
   update(id: string, dto: UpdateEmployeeDto) {
-    return apiFetch<User>(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(dto) });
+    return apiFetch<UserProfile>(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(dto) });
   },
 
   assignRole(id: string, dto: AssignRoleDto) {
-    return apiFetch<User>(`/api/employees/${id}/role`, { method: 'PATCH', body: JSON.stringify(dto) });
+    return apiFetch<UserProfile>(`/api/employees/${id}/role`, { method: 'PATCH', body: JSON.stringify(dto) });
   },
 
   updateManagerDepartments(id: string, departmentIds: string[]) {
-    return apiFetch<User>(`/api/employees/${id}/manager-departments`, {
+    return apiFetch<UserProfile>(`/api/employees/${id}/manager-departments`, {
       method: 'PATCH',
       body: JSON.stringify({ departmentIds }),
     });
@@ -89,7 +89,7 @@ export const employeeApi = {
     id:              string,
     dto: { newDepartmentId: string; effectiveDate: string },
   ) {
-    return apiFetch<{ employee: User; assignment: DepartmentAssignment }>(
+    return apiFetch<{ employee: UserProfile; assignment: DepartmentAssignment }>(
       `/api/employees/${id}/transfer-department`,
       { method: 'POST', body: JSON.stringify(dto) },
     );

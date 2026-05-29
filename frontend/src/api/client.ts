@@ -18,6 +18,7 @@ export class ApiError extends Error {
   constructor(
     public readonly statusCode: number,
     message: string,
+    public readonly code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -46,7 +47,7 @@ function handleUnauthorized(): void {
 // ─── Response parser ──────────────────────────────────────────────────────────
 
 async function parseEnvelope<T>(res: Response): Promise<T> {
-  let body: { success: boolean; data?: T; error?: string; message?: string };
+  let body: { success: boolean; data?: T; error?: string; message?: string; code?: string };
 
   try {
     body = await res.json();
@@ -60,7 +61,7 @@ async function parseEnvelope<T>(res: Response): Promise<T> {
   }
 
   if (!body.success) {
-    throw new ApiError(res.status, body.error ?? body.message ?? `HTTP ${res.status}`);
+    throw new ApiError(res.status, body.error ?? body.message ?? `HTTP ${res.status}`, body.code);
   }
 
   return body.data as T;

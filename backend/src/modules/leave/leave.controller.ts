@@ -7,7 +7,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { leaveService } from './leave.service';
 import { ok, created } from '../../shared/utils/response';
-import type { CreateLeaveRequestDto, RejectLeaveDto } from './leave.types';
+import { hasPermission } from '../../core/permissions';
+import type { CreateLeaveRequestDto, RejectLeaveDto, LeaveStatus } from './leave.types';
 
 // POST /leave
 // Body: CreateLeaveRequestDto + optional targetUserId (managers creating on behalf)
@@ -30,15 +31,23 @@ export function create(req: Request, res: Response, next: NextFunction): void {
   } catch (e) { next(e); }
 }
 
-// GET /leave?userId=&status=&leaveType=&from=&to=
+// GET /leave?userId=&status=&leaveType=&from=&to=&branchId=
+// When no userId and actor is manager+: returns all visible leaves for approval review.
 export function list(req: Request, res: Response, next: NextFunction): void {
   try {
     const { userId: actorUserId, role: actorRole } = req.user!;
     const q = req.query as Record<string, string>;
 
-    // Managers and HR pass userId to view a specific employee; employees always see own
-    const targetUserId = q.userId ?? actorUserId;
+    if (!q.userId && hasPermission(actorRole, 'manager')) {
+      const leaves = leaveService.listForReview(actorUserId, actorRole, {
+        status:   q.status   as LeaveStatus | undefined,
+        branchId: q.branchId,
+      });
+      ok(res, leaves);
+      return;
+    }
 
+    const targetUserId = q.userId ?? actorUserId;
     const leaves = leaveService.getUserLeaves(targetUserId, actorUserId, actorRole, {
       status:    q.status    as any,
       leaveType: q.leaveType as any,

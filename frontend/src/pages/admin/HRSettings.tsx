@@ -6,13 +6,16 @@
  * Sections:
  *   1.  Mode (SIMPLE / FULL) + requireManagerApproval
  *   2.  Snap Time Engine (continuousGapMinutes, retroApprovalMode)
- *   4.  Work Schedule (startTime, endTime, flexible)
- *   5.  Late Rule (graceMinutes)
- *   6.  Early Leave Rule (graceMinutes)
- *   7.  OT Rule (enabled, startAfterMinutes, requireApproval)
- *   8.  Location Rule (enabled, radiusMeters)
- *   9.  Photo Rule (requireCheckInPhoto, requireCheckOutPhoto)
- *   10. HR Report (imageMode)
+ *   3.  Late Rule (checkInWindowMinutes, lateRule, absentAfterMinutes)
+ *   4.  Early Leave Rule (graceMinutes)
+ *   5.  OT Rule (enabled, startAfterMinutes, requireApproval)
+ *   6.  Location Rule (enabled, radiusMeters)
+ *   7.  Photo Rule (requireCheckInPhoto, requireCheckOutPhoto)
+ *   8.  HR Report (imageMode)
+ *
+ * Note: Work schedule start/end times are NOT configured here — each department
+ * uses its own WorkSchedulePattern. Late/absent thresholds are applied relative
+ * to each employee's own scheduled shift time.
  *
  * UX:
  *   - Loads initial data from GET /api/org-settings
@@ -24,6 +27,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PageSpinner } from '../../components/Spinner';
 import { SettingCard, SettingRow } from '../../components/ui/SettingCard';
 import { Toggle } from '../../components/ui/Toggle';
+import { useAuth } from '../../context/AuthContext';
 import {
   getAttendanceSettings,
   patchAttendanceSettings,
@@ -68,34 +72,14 @@ function NumberInput({
   );
 }
 
-/** Simple HH:mm time input. */
-function TimeInput({
-  value,
-  onChange,
-  disabled,
-}: {
-  value:     string;
-  onChange:  (v: string) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <input
-      type="time"
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm
-        tabular-nums text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-1
-        focus:ring-primary-400 disabled:cursor-not-allowed disabled:opacity-50"
-    />
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 export default function HRSettings() {
+  const { user } = useAuth();
+  const branchId = user?.branchId ?? '';
+
   const [original, setOriginal] = useState<AttendanceSettings>(SETTINGS_DEFAULTS);
   const [current,  setCurrent]  = useState<AttendanceSettings>(SETTINGS_DEFAULTS);
   const [loading,  setLoading]  = useState(true);
@@ -106,7 +90,8 @@ export default function HRSettings() {
   // ── Load ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    getAttendanceSettings()
+    if (!branchId) return;
+    getAttendanceSettings(branchId)
       .then((s) => {
         setOriginal(s);
         setCurrent(s);
@@ -115,7 +100,7 @@ export default function HRSettings() {
         // Safe defaults remain in state; user can still edit and save
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [branchId]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -154,7 +139,7 @@ export default function HRSettings() {
     setErrorMsg('');
 
     try {
-      const saved = await patchAttendanceSettings(patch);
+      const saved = await patchAttendanceSettings(branchId, patch);
       setOriginal(saved);
       setCurrent(saved);
       setStatus('success');
@@ -243,9 +228,9 @@ export default function HRSettings() {
         >
           <Toggle
             checked={current.mode === 'SIMPLE'}
-            onChange={(on) => update('mode', on ? 'SIMPLE' : 'FULL')}
+            onChange={(on) => update('mode', on ? 'SIMPLE' : 'NORMAL')}
             disabled={saving}
-            label="สลับโหมด SIMPLE / FULL"
+            label="สลับโหมด SIMPLE / NORMAL"
           />
         </SettingRow>
 
@@ -311,48 +296,31 @@ export default function HRSettings() {
         </SettingRow>
       </SettingCard>
 
-      {/* ── 4. Work Schedule ── */}
-      <SettingCard
-        title="ตารางเวลาทำงาน"
-        description="กำหนดช่วงเวลาทำงานมาตรฐานขององค์กร"
-      >
-        <SettingRow label="เวลาเริ่มงาน">
-          <TimeInput
-            value={current.workSchedule.startTime}
-            onChange={(v) => update('workSchedule', { startTime: v })}
-            disabled={saving}
-          />
-        </SettingRow>
-
-        <SettingRow label="เวลาเลิกงาน">
-          <TimeInput
-            value={current.workSchedule.endTime}
-            onChange={(v) => update('workSchedule', { endTime: v })}
-            disabled={saving}
-          />
-        </SettingRow>
-
-        <SettingRow
-          label="เวลาทำงานแบบยืดหยุ่น (Flexible)"
-          hint="เมื่อเปิด พนักงานจะไม่ถูกนับว่าสายหรือออกก่อนเวลา"
-        >
-          <Toggle
-            checked={current.workSchedule.flexible}
-            onChange={(on) => update('workSchedule', { flexible: on })}
-            disabled={saving}
-            label="เวลาทำงานแบบยืดหยุ่น"
-          />
-        </SettingRow>
-      </SettingCard>
-
-      {/* ── 5. Late Rule ── */}
+      {/* ── 3. Late / Absent Rule ── */}
       <SettingCard
         title="กฎการมาสาย"
-        description="ระยะเวลาผ่อนผันก่อนที่ระบบจะนับว่าสาย"
+        description="เงื่อนไขทั้งหมดคำนวณจากเวลาเริ่มงานของตารางงานแต่ละคน ไม่ใช่เวลากลางขององค์กร"
       >
         <SettingRow
-          label="เวลาผ่อนผัน (นาที)"
-          hint={`ลงเวลาหลัง ${current.workSchedule.startTime} + ${current.lateRule.graceMinutes} นาที = สาย`}
+          label="เช็คอินก่อนเวลางานได้ (นาที)"
+          hint={
+            current.checkInWindowMinutes === 0
+              ? 'ไม่มีข้อจำกัด — เช็คอินได้ทุกเวลาก่อนกะงาน'
+              : `เช็คอินได้ตั้งแต่ ${current.checkInWindowMinutes} นาทีก่อนเวลาเริ่มงาน (0 = ไม่จำกัด)`
+          }
+        >
+          <NumberInput
+            value={current.checkInWindowMinutes}
+            onChange={(v) => update('checkInWindowMinutes', v as AttendanceSettings['checkInWindowMinutes'])}
+            min={0}
+            suffix="นาที"
+            disabled={saving}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label="ช้ากว่าเวลาเริ่มงาน ___ นาที = สาย"
+          hint={`ลงเวลาหลังเวลาเริ่มงานเกิน ${current.lateRule.graceMinutes} นาที จะถูกบันทึกเป็นสาย`}
         >
           <NumberInput
             value={current.lateRule.graceMinutes}
@@ -361,16 +329,33 @@ export default function HRSettings() {
             disabled={saving}
           />
         </SettingRow>
+
+        <SettingRow
+          label="ช้ากว่าเวลาเริ่มงาน ___ นาที = ขาด"
+          hint={
+            current.absentAfterMinutes === 0
+              ? 'ปิดใช้งาน — ไม่มีการบล็อกเช็คอิน (0 = ปิด)'
+              : `ลงเวลาหลังเวลาเริ่มงานเกิน ${current.absentAfterMinutes} นาที จะถูกบล็อกไม่ให้เช็คอิน`
+          }
+        >
+          <NumberInput
+            value={current.absentAfterMinutes}
+            onChange={(v) => update('absentAfterMinutes', v as AttendanceSettings['absentAfterMinutes'])}
+            min={0}
+            suffix="นาที"
+            disabled={saving}
+          />
+        </SettingRow>
       </SettingCard>
 
-      {/* ── 6. Early Leave Rule ── */}
+      {/* ── 4. Early Leave Rule ── */}
       <SettingCard
         title="กฎการออกก่อนเวลา"
-        description="ระยะเวลาผ่อนผันก่อนที่ระบบจะนับว่าออกก่อนเวลา"
+        description="คำนวณจากเวลาเลิกงานของตารางงานแต่ละคน"
       >
         <SettingRow
-          label="เวลาผ่อนผัน (นาที)"
-          hint={`ออกก่อน ${current.workSchedule.endTime} เกิน ${current.earlyLeaveRule.graceMinutes} นาที = ออกก่อนเวลา`}
+          label="ออกก่อนเวลาเลิกงาน ___ นาที = ออกก่อนเวลา"
+          hint={`ออกก่อนเวลาเลิกงานเกิน ${current.earlyLeaveRule.graceMinutes} นาที จะถูกบันทึกเป็นออกก่อนเวลา`}
         >
           <NumberInput
             value={current.earlyLeaveRule.graceMinutes}
@@ -440,18 +425,7 @@ export default function HRSettings() {
           />
         </SettingRow>
 
-        <SettingRow
-          label="รัศมีที่อนุญาต"
-          hint="พนักงานต้องอยู่ในรัศมีนี้เพื่อลงเวลาได้"
-        >
-          <NumberInput
-            value={current.locationRule.radiusMeters}
-            onChange={(v) => update('locationRule', { radiusMeters: v })}
-            min={1}
-            suffix="เมตร"
-            disabled={saving || !current.locationRule.enabled}
-          />
-        </SettingRow>
+        {/* GPS radius is configured per-branch on the Branches page */}
       </SettingCard>
 
       {/* ── 9. Photo Rule ── */}

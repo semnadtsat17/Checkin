@@ -1,99 +1,190 @@
 // ─── Roles ────────────────────────────────────────────────────────────────────
 
-export type UserRole = 'super_admin' | 'hr' | 'manager' | 'employee' | 'part_time';
+export type UserRole =
+  | 'super_admin'
+  | 'admin'        // formerly hr_global — all-branch access, assigned by super_admin
+  | 'hr_branch'    // branch-scoped HR, auto-created per branch
+  | 'manager'
+  | 'employee'
+  | 'part_time';
 
-// ─── User ─────────────────────────────────────────────────────────────────────
+// ─── Org Info (global, 1 record) ──────────────────────────────────────────────
 
+export interface OrgInfo {
+  id:           string;
+  nameTh:       string;
+  nameEn?:      string;
+  logoPath?:    string;
+  createdAt:    string;
+  updatedAt:    string;
+}
+
+// ─── Branch Settings (per-branch, replaces global org_settings) ───────────────
+
+export interface BranchSettings {
+  id:                       string;
+  branchId:                 string;
+
+  // Attendance mode
+  attendanceMode:           'NORMAL' | 'SIMPLE';
+  requireManagerApproval:   boolean;
+
+  // Snap Time Engine
+  continuousGapMinutes:     number;
+  retroApprovalMode:        'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY';
+
+  // Late / Absent thresholds
+  checkInWindowMinutes:     number;   // minutes before shift start allowed to check in
+  lateGraceMinutes:         number;   // minutes after shift start before "late"
+  absentAfterMinutes:       number;   // minutes after shift start → auto absent (0 = off)
+  earlyLeaveGraceMinutes:   number;   // minutes before shift end → early_leave
+
+  // Checkout late
+  checkoutLateThresholdMinutes: number;  // minutes after shift end before reason required (0 = off)
+
+  // Consecutive shift bridge
+  consecutiveShiftGapMinutes: number;   // gap ≤ this → no checkout required between shifts
+
+  // in_progress auto-close
+  maxInProgressHours:       number;   // hours before in_progress auto-closes (default 24)
+
+  // Location
+  locationEnabled:          boolean;
+
+  // Photo
+  requireCheckInPhoto:      boolean;
+  requireCheckOutPhoto:     boolean;
+
+  // OT
+  otEnabled:                boolean;
+  otStartAfterMinutes:      number;
+  otRequireApproval:        boolean;
+
+  // HR Report
+  hrReportImageMode:        'ALWAYS' | 'ON_DEMAND' | 'OFF';
+
+  createdAt:                string;
+  updatedAt:                string;
+}
+
+// ─── User / Employee ──────────────────────────────────────────────────────────
+
+/**
+ * Shared personal data — same across all branches.
+ * Branch-specific employment data lives in BranchMembership.
+ * @see UserProfile for the combined view returned by the auth API
+ */
 export interface User {
   id: string;
-  employeeCode: string;
-  firstName: string;
-  lastName: string;
-  firstNameTh: string;
-  lastNameTh: string;
-  email: string;
-  phone?: string;
-  role: UserRole;
-  workSchedulePatternId?: string;  // Work Schedule Pattern assigned to this employee
-  departmentId: string;
-  branchId: string;
-  positionId?: string;
-  startDate?: string;              // YYYY-MM-DD — employment start date
-  monthlyHoursOverride?: number;   // part-time: overrides default monthly hours
-  mustChangePassword?: boolean;    // true after HR generates/resets a password
-  managerDepartments?: string[];   // dept IDs this manager is allowed to manage (manager role only)
-  /**
-   * Employment start date.  Optional — not all employees have a recorded start date.
-   * Used for tenure calculations and future eligibility rules.
-   */
-  startWorkDate?: string;          // YYYY-MM-DD
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+
+  // Personal (shared)
+  nationalId?:      string;
+  firstName:        string;
+  lastName:         string;
+  firstNameTh:      string;
+  lastNameTh:       string;
+  email:            string;
+  phone?:           string;
+  dateOfBirth?:     string;   // YYYY-MM-DD
+
+  // Derived: min(branchMembership.branchStartDate) across all branches
+  // Not stored — computed on read
+  startDate?:       string;   // YYYY-MM-DD earliest branch start
+
+  mustChangePassword?: boolean;
+  isActive:         boolean;
+  createdAt:        string;
+  updatedAt:        string;
+}
+
+/**
+ * Branch-specific employment data for one (employee, branch) pair.
+ * An employee can have multiple BranchMembership records (one per branch).
+ */
+export interface BranchMembership {
+  id:                     string;
+  userId:                 string;
+  branchId:               string;
+
+  employeeCode:           string;
+  role:                   UserRole;
+  departmentId:           string;
+  positionId?:            string;
+  workSchedulePatternId?: string;
+  monthlyHoursOverride?:  number;   // part_time override
+  managerDepartments?:    string[]; // dept IDs this manager oversees (manager role)
+
+  branchStartDate:        string;   // YYYY-MM-DD — when they started at THIS branch
+  isActive:               boolean;
+  createdAt:              string;
+  updatedAt:              string;
+}
+
+/**
+ * Combined view returned by the auth API — personal User data + current-branch
+ * employment context.  This is what the frontend stores as the logged-in user.
+ */
+export interface UserProfile extends User {
+  role:                   UserRole;
+  employeeCode:           string;
+  departmentId:           string;
+  branchId:               string;
+  positionId?:            string;
+  workSchedulePatternId?: string;
+  monthlyHoursOverride?:  number;
+  managerDepartments?:    string[];
+  branchStartDate?:       string;
+}
+
+// ─── Admin Branch Access ──────────────────────────────────────────────────────
+
+/**
+ * Controls which branches an `admin` role user may access.
+ * Managed by super_admin only.
+ */
+export interface AdminBranchAccess {
+  id:           string;
+  userId:       string;       // must have role = 'admin'
+  branchIds:    string[];     // specific branches, OR ['*'] for all
+  createdAt:    string;
+  updatedAt:    string;
 }
 
 // ─── Work Schedule Pattern ────────────────────────────────────────────────────
-// Defines the shift time format for a group of employees.
-// (formerly called "SubRole" — renamed for clarity: this is NOT a job role,
-//  it is a template of shift codes + time ranges + monthly working hours.)
 
-/**
- * A single shift definition embedded inside a WorkSchedulePattern.
- *
- * Time invariant:
- *   startTime ALWAYS belongs to the date the shift is assigned to.
- *   isOvernight=false → endTime is on the SAME calendar day.
- *   isOvernight=true  → endTime is on the NEXT calendar day.
- *
- * Special midnight sentinel:
- *   endTime="00:00" with isOvernight=false represents "ends exactly at midnight"
- *   (i.e. 24:00 same day). normalizeHhmm() handles this via end≤start detection.
- *   Example: "บ 16:00–24:00" → startTime "16:00", endTime "00:00", isOvernight false.
- *
- * Cross-midnight example:
- *   "N 20:00–08:00" → startTime "20:00", endTime "08:00", isOvernight true.
- *
- * Dawn shift (starts at midnight, same day):
- *   "ด 00:00–08:00" → startTime "00:00", endTime "08:00", isOvernight false.
- *
- * Forbidden state: startTime="00:00" AND isOvernight=true.
- *   normalizeHhmm() cannot detect this case — it must be prevented at input
- *   and rejected by backend validation (INVALID_SHIFT_CONFIGURATION).
- */
 export interface WorkSchedulePatternShift {
-  code:         string;   // short label: D, N, ช, บ, ด …
+  code:         string;
   nameTh:       string;
   nameEn?:      string;
   startTime:    string;   // HH:mm
-  endTime:      string;   // HH:mm  ("00:00" = midnight-end or midnight-start)
-  isOvernight:  boolean;  // true = crosses midnight
-  breakMinutes: number;   // paid/unpaid break duration
+  endTime:      string;   // HH:mm
+  isOvernight:  boolean;
+  breakMinutes: number;
+  otThresholdMinutes?: number;  // SHIFT_TIME: minutes past shift end before counting as OT
 }
 
 export type WorkSchedulePatternType = 'SHIFT_TIME' | 'WEEKLY_WORKING_TIME';
 
-/**
- * One day's entry in a WEEKLY_WORKING_TIME pattern.
- * dayOfWeek follows JS Date.getDay() convention: 0 = Sunday, 1 = Monday … 6 = Saturday.
- */
 export interface WeeklyScheduleDay {
-  dayOfWeek: number;  // 0–6
+  dayOfWeek: number;  // 0 = Sunday … 6 = Saturday
   startTime: string;  // HH:mm
   endTime:   string;  // HH:mm
 }
 
 export interface WorkSchedulePattern {
-  id: string;
-  nameTh: string;
-  nameEn?: string;
-  forRole: UserRole;                       // which role group this pattern applies to
-  type: WorkSchedulePatternType;           // 'SHIFT_TIME' (default) | 'WEEKLY_WORKING_TIME'
-  monthlyWorkingHours: number;             // total contracted hours per month
-  shifts: WorkSchedulePatternShift[];      // used when type = SHIFT_TIME
-  weeklySchedule?: WeeklyScheduleDay[];    // used when type = WEEKLY_WORKING_TIME
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  id:                   string;
+  branchId:             string;   // per-branch
+  nameTh:               string;
+  nameEn?:              string;
+  forRole:              UserRole;
+  type:                 WorkSchedulePatternType;
+  monthlyWorkingHours?: number;   // required for SHIFT_TIME, omitted for WEEKLY_WORKING_TIME
+  shifts:               WorkSchedulePatternShift[];
+  weeklySchedule?:      WeeklyScheduleDay[];
+  importedFromBranchId?: string;  // set when imported from another branch
+  isActive:             boolean;
+  createdAt:            string;
+  updatedAt:            string;
 }
 
 /** @deprecated Use WorkSchedulePatternShift */
@@ -104,32 +195,37 @@ export type SubRole = WorkSchedulePattern;
 // ─── Department ───────────────────────────────────────────────────────────────
 
 export interface Department {
-  id: string;
-  nameTh: string;
-  nameEn: string;
-  branchId: string;
-  managerId?: string;
-  workSchedulePatternId?: string;  // Work Schedule Pattern used by this department
-  requireHrApproval?: boolean;     // if true, schedule submissions must be approved by HR before publishing
-  holidayTypeId?: string;          // FK → HolidayType.id; undefined = no holiday policy
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  id:                   string;
+  branchId:             string;   // per-branch
+  nameTh:               string;
+  nameEn:               string;
+  managerId?:           string;
+  workSchedulePatternId?: string;
+  requireHrApproval?:   boolean;
+  holidayTypeId?:       string;
+
+  // Approval chain for AdditionalWork / OT requests
+  additionalWorkApprovalChain: 'manager_only' | 'hr_only' | 'manager_then_hr';
+
+  isActive:             boolean;
+  createdAt:            string;
+  updatedAt:            string;
 }
 
 // ─── Branch ───────────────────────────────────────────────────────────────────
 
 export interface Branch {
-  id: string;
-  nameTh: string;
-  nameEn: string;
-  address?: string;
-  latitude?: number;
-  longitude?: number;
-  radiusMeters?: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  id:             string;
+  nameTh:         string;
+  nameEn:         string;
+  province?:      string;
+  address?:       string;
+  latitude?:      number;
+  longitude?:     number;
+  radiusMeters?:  number;
+  isActive:       boolean;
+  createdAt:      string;
+  updatedAt:      string;
 }
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
@@ -141,49 +237,166 @@ export type AttendanceStatus =
   | 'early_leave'
   | 'on_leave'
   | 'holiday'
-  | 'pending_approval';  // check-in with no scheduled shift — awaits manager review
+  | 'in_progress'       // checked-in (no schedule), awaiting checkout
+  | 'pending_approval'; // no-schedule + checked out → awaiting manager review
 
-/**
- * How the check-in was initiated.
- *
- * NORMAL_CHECKIN         — employee checked in within their assigned SNAP window.
- * OUT_OF_SCHEDULE_CHECKIN — no assigned schedule; employee provides reason; goes to HR approval.
- * RETROACTIVE_CHECKIN    — manual time entry after the fact; approval flow determined by
- *                           org-settings.retroApprovalMode (MANAGER_THEN_HR / HR_ONLY / MANAGER_ONLY).
- *
- * Absent from legacy records (undefined) → treated as NORMAL_CHECKIN for backward compat.
- */
 export type CheckInType =
   | 'NORMAL_CHECKIN'
   | 'OUT_OF_SCHEDULE_CHECKIN'
   | 'RETROACTIVE_CHECKIN';
 
+export type CheckoutLateReason =
+  | 'forgot'
+  | 'extra_work'
+  | 'compensate'
+  | 'ot';
+
 export interface AttendanceRecord {
-  id: string;
-  userId: string;
-  date: string;            // YYYY-MM-DD
-  checkInTime?: string;    // ISO datetime
-  checkOutTime?: string;   // ISO datetime
-  checkInPhoto?: string;   // file path or base64 ref
-  checkOutPhoto?: string;
-  checkInLat?: number;
-  checkInLng?: number;
-  checkOutLat?: number;
-  checkOutLng?: number;
-  status: AttendanceStatus;
-  /**
-   * How the check-in was initiated.  Absent on legacy records (created before
-   * this field existed) — treat as NORMAL_CHECKIN when undefined.
-   */
-  checkInType?: CheckInType;
-  /** Required when checkInType === 'OUT_OF_SCHEDULE_CHECKIN'. */
+  id:                   string;
+  userId:               string;
+  branchId:             string;
+  date:                 string;             // YYYY-MM-DD (shift start date for overnight)
+  shiftCode?:           string;             // null = single-shift day (backward compat)
+
+  checkInTime?:         string;             // ISO datetime (actual)
+  checkOutTime?:        string;             // ISO datetime (actual)
+  checkInPhoto?:        string;
+  checkOutPhoto?:       string;
+  checkInLat?:          number;
+  checkInLng?:          number;
+  checkOutLat?:         number;
+  checkOutLng?:         number;
+
+  // Claimed times (out-of-schedule / checkout confirmation dialog)
+  claimedCheckInTime?:  string;             // HH:mm — user-confirmed start
+  claimedCheckOutTime?: string;             // HH:mm — user-confirmed end
+
+  status:               AttendanceStatus;
+  checkInType?:         CheckInType;
   outOfScheduleReason?: string;
-  note?: string;
-  editRequestId?: string;
-  approvedBy?: string;      // userId of manager who approved a pending_approval record
-  rejectedBy?: string;      // userId of manager who rejected a pending_approval record
-  createdAt: string;
-  updatedAt: string;
+  coveringForUserId?:   string;             // set when reason = "มาเข้าแทน"
+
+  // Checkout late
+  checkoutLateReason?:  CheckoutLateReason;
+  forgotCheckout?:      boolean;            // true when HR approved "ลืม checkout"
+  effectiveCheckOutTime?: string;           // shift end time used for hours when forgotCheckout
+
+  // Consecutive shift bridge
+  autoBridged?:         boolean;            // true when gap between shifts was auto-bridged
+
+  // Shift transfer reference
+  shiftTransferId?:     string;             // FK → ShiftTransferRequest (if shift was transferred)
+  originalOwnerId?:     string;             // original employee who owned this shift before transfer
+
+  note?:                string;
+  editRequestId?:       string;
+  approvedBy?:          string;
+  rejectedBy?:          string;
+  createdAt:            string;
+  updatedAt:            string;
+}
+
+// ─── Additional Work Record ───────────────────────────────────────────────────
+
+export type AdditionalWorkReason = 'extra_work' | 'compensate' | 'ot' | 'covering';
+
+export type AdditionalWorkHourType = 'regular' | 'ot';
+
+export type AdditionalWorkStatus =
+  | 'pending'
+  | 'returned'         // rejected with note — employee must revise
+  | 'approved'
+  | 'rejected_final';  // permanently rejected
+
+export interface AdditionalWorkRevision {
+  reason:       string;
+  attachments:  string[];   // file paths
+  submittedAt:  string;     // ISO datetime
+}
+
+export interface AdditionalWorkRecord {
+  id:                   string;
+  attendanceRecordId:   string;   // FK → base shift AttendanceRecord
+  userId:               string;
+  branchId:             string;
+  departmentId:         string;
+  date:                 string;   // YYYY-MM-DD
+
+  startTime:            string;   // HH:mm — shift end time (start of additional work)
+  endTime:              string;   // HH:mm — actual checkout time
+
+  reason:               AdditionalWorkReason;
+  hourType:             AdditionalWorkHourType;  // HR can override
+  hrOverrideHourType?:  boolean;  // true if HR changed the default hourType
+  countInTotal:         boolean;  // whether approved hours count toward monthly total
+
+  note?:                string;
+  attachments:          string[];
+  revisionHistory:      AdditionalWorkRevision[];
+  hrNote?:              string;   // HR note sent back on 'returned'
+
+  status:               AdditionalWorkStatus;
+  approvedBy?:          string;
+  approvedAt?:          string;
+  createdAt:            string;
+  updatedAt:            string;
+}
+
+// ─── Shift Transfer ───────────────────────────────────────────────────────────
+
+export type ShiftTransferStatus =
+  | 'pending_target'    // waiting for receiver to accept
+  | 'pending_manager'   // receiver accepted, waiting for sender's manager
+  | 'approved'
+  | 'rejected';
+
+export interface ShiftTransferRequest {
+  id:                 string;
+  senderId:           string;       // Employee A (giving up shift)
+  receiverId:         string;       // Employee B (receiving shift)
+  senderBranchId:     string;
+  receiverBranchId:   string;
+  senderDeptId:       string;
+  receiverDeptId:     string;
+
+  shiftDate:          string;       // YYYY-MM-DD
+  shiftCode:          string;       // shift code being transferred
+  startTime:          string;       // HH:mm
+  endTime:            string;       // HH:mm
+  isOvernight:        boolean;
+  breakMinutes:       number;
+
+  status:             ShiftTransferStatus;
+  targetResponse?:    'accepted' | 'declined';
+  targetRespondedAt?: string;
+
+  approvedBy?:        string;       // Manager of sender's dept
+  managerNote?:       string;
+  resolvedAt?:        string;
+
+  createdAt:          string;
+  updatedAt:          string;
+}
+
+// ─── OT Request (WEEKLY_WORKING_TIME departments) ────────────────────────────
+
+export type OvertimeStatus = 'pending' | 'approved' | 'rejected';
+
+export interface OvertimeRequest {
+  id:               string;
+  userId:           string;
+  branchId:         string;
+  departmentId:     string;
+  date:             string;         // YYYY-MM-DD
+  startTime:        string;         // HH:mm
+  endTime:          string;         // HH:mm
+  durationMinutes:  number;
+  reason:           string;
+  hourType:         AdditionalWorkHourType;  // HR can override
+  approvedBy?:      string;
+  status:           OvertimeStatus;
+  createdAt:        string;
+  updatedAt:        string;
 }
 
 // ─── Edit Request ─────────────────────────────────────────────────────────────
@@ -191,136 +404,94 @@ export interface AttendanceRecord {
 export type EditRequestStatus = 'pending' | 'approved' | 'rejected';
 
 export interface EditRequest {
-  id: string;
-  attendanceId: string;
-  requestedBy: string;    // userId of manager who submitted the request
-  approvedBy?: string;    // userId of HR who approved
-  rejectedBy?: string;    // userId of HR who rejected
-  rejectReason?: string;  // HR's rejection note
-  reason: string;         // manager's stated reason for change
-  originalData: Partial<AttendanceRecord>;
+  id:            string;
+  attendanceId:  string;
+  requestedBy:   string;
+  approvedBy?:   string;
+  rejectedBy?:   string;
+  rejectReason?: string;
+  reason:        string;
+  originalData:  Partial<AttendanceRecord>;
   requestedData: Partial<AttendanceRecord>;
-  status: EditRequestStatus;
-  createdAt: string;
-  updatedAt: string;
+  status:        EditRequestStatus;
+  createdAt:     string;
+  updatedAt:     string;
 }
 
 // ─── Work Schedule ────────────────────────────────────────────────────────────
 
 export interface ShiftSchedule {
-  id: string;
-  nameTh: string;
-  nameEn: string;
-  startTime: string;   // HH:mm
-  endTime: string;     // HH:mm
+  id:           string;
+  nameTh:       string;
+  nameEn:       string;
+  startTime:    string;
+  endTime:      string;
   breakMinutes: number;
-  isOvernight: boolean;
+  isOvernight:  boolean;
 }
 
-/**
- * Optional time override for a single day — replaces the SubRole's default
- * shift times without permanently changing the SubRole template.
- */
 export interface ScheduleTimeOverride {
-  startTime:    string;   // HH:mm
-  endTime:      string;   // HH:mm
-  isOvernight?: boolean;
+  startTime:     string;
+  endTime:       string;
+  isOvernight?:  boolean;
   breakMinutes?: number;
 }
 
-/**
- * One day's assignment inside a WorkSchedule.
- * shiftCode references SubRole.shifts[].code (D, N, ช, บ, ด …).
- * null = unassigned (not a day-off, just no shift set yet).
- */
 export interface ScheduleDay {
-  shiftCode:     string | null;    // primary shift (first of shiftCodes, kept for backward compat)
-  shiftCodes?:   string[];         // all assigned shifts for multi-shift days
-  isDayOff:      boolean;
-  timeOverride?: ScheduleTimeOverride;
-  note?:         string;
+  shiftCode:      string | null;
+  shiftCodes?:    string[];
+  isDayOff:       boolean;
+  timeOverride?:  ScheduleTimeOverride;
+  note?:          string;
 }
 
 export interface WorkSchedule {
-  id: string;
-  userId: string;
-  weekStart: string;                    // YYYY-MM-DD
-  days: Record<string, ScheduleDay>;   // key = YYYY-MM-DD
-  createdBy: string;                    // userId of assigning manager/hr
+  id:         string;
+  userId:     string;
+  branchId:   string;
+  weekStart:  string;
+  days:       Record<string, ScheduleDay>;
+  createdBy:  string;
   updatedBy?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt:  string;
+  updatedAt:  string;
 }
 
 // ─── Extra Working Time ───────────────────────────────────────────────────────
 
 export type ExtraWorkReason = 'ot' | 'compensate' | 'training' | 'meeting' | 'other';
 
-/**
- * A manually created working-time block that overlays on top of the normal
- * shift schedule.  Supports both SHIFT_TIME and WEEKLY_WORKING_TIME departments.
- * Never auto-converted into a shift — it is always an additional entry.
- */
 export interface ExtraWork {
   id:            string;
   employeeId:    string;
   departmentId:  string;
-  date:          string;          // YYYY-MM-DD
-  startTime:     string;          // HH:mm
-  endTime:       string;          // HH:mm
+  branchId:      string;
+  date:          string;
+  startTime:     string;
+  endTime:       string;
   reason:        ExtraWorkReason;
-  customReason?: string;          // required when reason === 'other'
-  /**
-   * Draft/publish lifecycle — mirrors ScheduleDayRecord.status.
-   * 'draft'     — saved by manager; invisible to employees.
-   * 'published' — explicitly published; visible to employees.
-   * undefined   — legacy record (created before this field existed); treated as 'published'.
-   */
+  customReason?: string;
   status?:       'draft' | 'published';
-  /**
-   * Soft-delete timestamp.
-   * Set by remove() instead of a hard delete so the deletion stays invisible
-   * to employees until publishDays() is called (which then hard-deletes the row).
-   * undefined = not deleted.
-   */
   deletedAt?:    string;
   createdBy:     string;
   createdAt:     string;
   updatedAt:     string;
 }
 
-// ─── Overtime ─────────────────────────────────────────────────────────────────
-
-export type OvertimeStatus = 'pending' | 'approved' | 'rejected';
-
-export interface OvertimeRequest {
-  id: string;
-  userId: string;
-  date: string;         // YYYY-MM-DD
-  startTime: string;    // HH:mm
-  endTime: string;      // HH:mm
-  durationMinutes: number;
-  reason: string;
-  approvedBy?: string;
-  status: OvertimeStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // ─── API Response ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
-  data?: T;
+  data?:   T;
   message?: string;
-  error?: string;
+  error?:  string;
 }
 
 export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
+  items:      T[];
+  total:      number;
+  page:       number;
+  pageSize:   number;
   totalPages: number;
 }
 
@@ -328,68 +499,54 @@ export interface PaginatedResponse<T> {
 
 export type ScheduleApprovalStatus = 'pending_hr_approval' | 'published' | 'rejected';
 
-/**
- * Tracks the HR approval lifecycle for a department's monthly schedule.
- * One record per (departmentId, month) submission attempt.
- */
 export interface ScheduleApproval {
-  id: string;
-  departmentId: string;
-  month: string;                          // YYYY-MM
-  status: ScheduleApprovalStatus;
-  submittedBy: string;                    // manager userId
-  submittedAt: string;                    // ISO datetime
-  reviewedBy?: string;                    // HR userId
-  reviewedAt?: string;                    // ISO datetime
-  rejectReason?: string;
-  requireHrApprovalSnapshot: boolean;     // value of dept.requireHrApproval at submit time
-  createdAt: string;
-  updatedAt: string;
+  id:                           string;
+  departmentId:                 string;
+  branchId:                     string;
+  month:                        string;
+  status:                       ScheduleApprovalStatus;
+  submittedBy:                  string;
+  submittedAt:                  string;
+  reviewedBy?:                  string;
+  reviewedAt?:                  string;
+  rejectReason?:                string;
+  requireHrApprovalSnapshot:    boolean;
+  createdAt:                    string;
+  updatedAt:                    string;
 }
 
 // ─── Holiday Policy ───────────────────────────────────────────────────────────
 
-/**
- * A named collection of holiday dates managed by HR.
- * Departments reference one HolidayType via holidayTypeId.
- */
 export interface HolidayType {
-  id:          string;
-  name:        string;
-  createdAt:   string;
-  updatedAt:   string;
+  id:        string;
+  branchId:  string;   // per-branch
+  name:      string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-/**
- * A single recurring holiday entry belonging to a HolidayType.
- * date is stored as MM-DD (e.g. "04-13" for Songkran) and matches yearly.
- * enabled can be toggled without deleting the record.
- */
 export interface HolidayDate {
-  id:            string;
-  typeId:        string;   // FK → HolidayType.id
-  name:          string;   // e.g. "วันสงกรานต์"
-  date:          string;   // MM-DD
-  enabled:       boolean;
-  createdAt:     string;
-  updatedAt:     string;
+  id:        string;
+  typeId:    string;
+  name:      string;
+  date:      string;   // MM-DD
+  enabled:   boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Department Transfer ──────────────────────────────────────────────────────
 
-/**
- * Audit trail record created every time HR transfers an employee to a new department.
- * The `effectiveDate` drives which schedule records are cleared / regenerated.
- */
 export interface DepartmentAssignment {
-  id: string;
-  userId: string;
+  id:               string;
+  userId:           string;
+  branchId:         string;
   fromDepartmentId: string;
-  toDepartmentId: string;
-  effectiveDate: string;   // YYYY-MM-DD — schedules from this date onward are migrated
-  transferredBy: string;   // HR userId who initiated the transfer
-  createdAt: string;
-  updatedAt: string;
+  toDepartmentId:   string;
+  effectiveDate:    string;
+  transferredBy:    string;
+  createdAt:        string;
+  updatedAt:        string;
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -398,17 +555,55 @@ export type AppNotificationType =
   | 'schedule_approved'
   | 'schedule_rejected'
   | 'schedule_pending'
-  | 'APPROVAL_REQUEST'   // new approval record waiting for a manager decision
-  | 'APPROVAL_RESULT';   // approval approved or rejected — sent to the employee
+  | 'APPROVAL_REQUEST'
+  | 'APPROVAL_RESULT'
+  | 'SHIFT_TRANSFER_REQUEST'    // B receives transfer request from A
+  | 'SHIFT_TRANSFER_RESULT'     // A/B notified of manager decision
+  | 'ADDITIONAL_WORK_RETURNED'  // employee notified of HR rejection + note
+  | 'ADDITIONAL_WORK_RESULT'    // employee notified of final approve/reject
+  | 'ABSENT_MARKED';            // employee notified when auto-marked absent
 
 export interface AppNotification {
-  id: string;
-  userId: string;                 // recipient
-  type: AppNotificationType;
-  title: string;
-  body: string;
-  relatedId?: string;             // scheduleApprovalId
-  isRead: boolean;
-  createdAt: string;
-  updatedAt: string;
+  id:         string;
+  userId:     string;
+  branchId:   string;
+  type:       AppNotificationType;
+  title:      string;
+  body:       string;
+  relatedId?: string;
+  isRead:     boolean;
+  createdAt:  string;
+  updatedAt:  string;
+}
+
+// ─── Monthly Summary ──────────────────────────────────────────────────────────
+
+export interface DeptHourSummary {
+  departmentId:   string;
+  departmentName: string;
+  regularHours:   number;   // rounded to 0.5
+  receivedHours:  number;   // from shift transfers received (same dept = merged here)
+  sentHours:      number;   // shift transfers sent out
+}
+
+export interface MonthlyHourSummary {
+  userId:         string;
+  branchId:       string;
+  month:          string;   // YYYY-MM
+
+  // Own branch totals
+  regularHours:   number;
+  otHours:        number;
+  absentHours:    number;   // from absent shifts (shift duration - break)
+  compensateHours: number;  // out-of-schedule approved (regular)
+
+  // Cross-branch (received from other depts)
+  crossDeptHours: DeptHourSummary[];
+
+  // Transfer summary
+  shiftTransferReceived: number;   // hours received from same dept (already in regularHours)
+  shiftTransferSent:     number;   // hours given away
+
+  // Absent vs compensate comparison
+  absentVsCompensateDiff: number;  // absentHours - compensateHours (negative = surplus)
 }

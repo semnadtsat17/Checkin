@@ -6,6 +6,7 @@ export interface EditRequestFilters {
   attendanceId?: string;
   from?:        string;
   to?:          string;
+  branchId?:    string;
 }
 
 export const editRequestApi = {
@@ -15,6 +16,7 @@ export const editRequestApi = {
     if (filters.attendanceId) p.set('attendanceId', filters.attendanceId);
     if (filters.from)         p.set('from',         filters.from);
     if (filters.to)           p.set('to',           filters.to);
+    if (filters.branchId)     p.set('branchId',     filters.branchId);
     const qs = p.toString() ? `?${p}` : '';
     return apiFetch<EditRequest[]>(`/api/edit-requests${qs}`);
   },

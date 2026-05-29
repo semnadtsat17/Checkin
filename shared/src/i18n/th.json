@@ -93,7 +93,8 @@
     "settings": "ตั้งค่า",
     "profile": "โปรไฟล์",
     "notifications": "การแจ้งเตือน",
-    "help": "ช่วยเหลือ"
+    "help": "ช่วยเหลือ",
+    "shiftTransfer": "โอนเวร"
   },
   "roles": {
     "super_admin": "ผู้ดูแลระบบสูงสุด",
@@ -306,15 +307,20 @@
     "request": "ขอลา",
     "list": "รายการลา",
     "approve": "อนุมัติ",
+    "approveManager": "อนุมัติขั้นต้น",
+    "approveHR": "อนุมัติ (HR)",
     "reject": "ปฏิเสธ",
     "type": "ประเภทการลา",
     "types": {
-      "sick": "ลาป่วย",
-      "personal": "ลากิจ",
-      "annual": "ลาพักร้อน",
-      "maternity": "ลาคลอด",
-      "ordain": "ลาบวช",
-      "other": "อื่นๆ"
+      "SICK": "ลาป่วย",
+      "VACATION": "ลาพักร้อน",
+      "PERSONAL": "ลากิจ",
+      "OTHER": "อื่นๆ"
+    },
+    "durationType": "รูปแบบการลา",
+    "durationTypes": {
+      "FULL_DAY": "เต็มวัน",
+      "HALF_DAY": "ครึ่งวัน"
     },
     "startDate": "วันที่เริ่มลา",
     "endDate": "วันที่สิ้นสุด",
@@ -323,12 +329,18 @@
     "document": "เอกสารแนบ",
     "status": {
       "pending": "รออนุมัติ",
-      "approved": "อนุมัติแล้ว",
+      "manager_approved": "ผ่านหัวหน้าแล้ว",
+      "hr_approved": "อนุมัติแล้ว",
       "rejected": "ปฏิเสธ"
     },
+    "rejectReason": "เหตุผลที่ปฏิเสธ",
     "balance": "วันลาคงเหลือ",
     "used": "วันลาที่ใช้ไป",
-    "requestSuccess": "ส่งคำขอลาสำเร็จ"
+    "noRequests": "ไม่มีคำขอลา",
+    "requestSuccess": "ส่งคำขอลาสำเร็จ",
+    "approveManagerSuccess": "อนุมัติขั้นต้นสำเร็จ",
+    "approveHRSuccess": "อนุมัติสำเร็จ",
+    "rejectSuccess": "ปฏิเสธคำขอลาแล้ว"
   },
   "editRequest": {
     "title": "คำขอแก้ไขเวลา",

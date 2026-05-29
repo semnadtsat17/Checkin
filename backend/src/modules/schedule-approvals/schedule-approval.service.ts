@@ -1,13 +1,14 @@
-import type {
+﻿import type {
   ScheduleApproval,
   ScheduleApprovalStatus,
   Department,
+  UserRole,
   WorkSchedule,
   ScheduleDay,
 } from '@hospital-hr/shared';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
-import { hasPermission } from '../../core/permissions';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 import { notificationService } from '../notifications/notification.service';
 import type { UserRecord } from '../employees/employee.service';
 
@@ -119,7 +120,7 @@ export const scheduleApprovalService = {
    * - If dept.requireHrApproval → status = pending_hr_approval, notify HR
    * - Otherwise → publish immediately
    */
-  submit(dto: SubmitApprovalDto, actorUserId: string, actorRole: string): ScheduleApproval {
+  submit(dto: SubmitApprovalDto, actorUserId: string, actorRole: UserRole): ScheduleApproval {
     const { departmentId, month } = dto;
 
     if (!departmentId) throw new AppError(400, 'departmentId required', 'VALIDATION_ERROR');
@@ -129,7 +130,7 @@ export const scheduleApprovalService = {
     if (!dept) throw new AppError(404, 'Department not found', 'NOT_FOUND');
 
     // Verify manager access
-    if (!hasPermission(actorRole as any, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       const actor = employeeStore.findById(actorUserId);
       const managedDepts = actor?.managerDepartments ?? [];
       if (!managedDepts.includes(departmentId)) {
@@ -175,7 +176,7 @@ export const scheduleApprovalService = {
       } as Omit<ScheduleApproval, 'id' | 'createdAt' | 'updatedAt'>);
 
       // Notify all HR users
-      const hrUsers = employeeStore.findAll((u) => u.role === 'hr' && u.isActive);
+      const hrUsers = employeeStore.findAll((u) => (u.role === 'admin' || u.role === 'hr_branch') && u.isActive);
       for (const hr of hrUsers) {
         notificationService.create(
           hr.id,
@@ -192,8 +193,8 @@ export const scheduleApprovalService = {
 
   // ── Approve ───────────────────────────────────────────────────────────────
 
-  approve(approvalId: string, actorUserId: string, actorRole: string): ScheduleApproval {
-    if (!hasPermission(actorRole as any, 'hr')) {
+  approve(approvalId: string, actorUserId: string, actorRole: UserRole): ScheduleApproval {
+    if (!hasHrAccess(actorRole)) {
       throw new AppError(403, 'Only HR can approve schedules', 'FORBIDDEN');
     }
 
@@ -227,8 +228,8 @@ export const scheduleApprovalService = {
 
   // ── Reject ────────────────────────────────────────────────────────────────
 
-  reject(approvalId: string, dto: RejectApprovalDto, actorUserId: string, actorRole: string): ScheduleApproval {
-    if (!hasPermission(actorRole as any, 'hr')) {
+  reject(approvalId: string, dto: RejectApprovalDto, actorUserId: string, actorRole: UserRole): ScheduleApproval {
+    if (!hasHrAccess(actorRole)) {
       throw new AppError(403, 'Only HR can reject schedules', 'FORBIDDEN');
     }
 
@@ -263,9 +264,9 @@ export const scheduleApprovalService = {
   findAll(
     filters: { departmentId?: string; status?: ScheduleApprovalStatus; month?: string },
     actorUserId: string,
-    actorRole: string,
+    actorRole: UserRole,
   ): ScheduleApproval[] {
-    const isHr = hasPermission(actorRole as any, 'hr');
+    const isHr = hasHrAccess(actorRole);
     const managedDepts = isHr
       ? null
       : new Set(employeeStore.findById(actorUserId)?.managerDepartments ?? []);

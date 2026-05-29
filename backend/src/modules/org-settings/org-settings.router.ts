@@ -1,16 +1,21 @@
-/**
+﻿/**
  * org-settings.router.ts
  *
- * Exposes organization-level feature flags to the frontend.
- * GET  /org-settings  — any authenticated user (used by frontend on load)
- * PATCH /org-settings — super_admin only
+ * Organisation-wide attendance configuration.
+ * GET  /org-settings  — any authenticated user
+ * PATCH /org-settings — hr and above
+ *
+ * Stored fields (OrgSettingsRecord):
+ *   attendanceMode, requireManagerApproval, continuousGapMinutes, retroApprovalMode
+ *   workSchedule, lateRule, earlyLeaveRule, checkInWindowMinutes, absentAfterMinutes
+ *   photoRule, locationRule
  *
  * Safety guardrails on PATCH:
- *  1. Idempotent — no write (and no audit entry) if payload matches stored values
- *  2. Mode transition lock — 409 MODE_CHANGE_LOCKED if current-month attendance records exist
- *  3. Approval auto-resolve — pending_approval → present (SYSTEM_AUTO) when disabling manager approval
- *  4. Audit log — every actual write appended to org_settings_audit.json
- *  5. EventEmitter — ORG_SETTINGS_UPDATED emitted after successful write
+ *  1. Idempotent   — no write if payload matches stored values
+ *  2. Mode lock    — 409 if switching modes with current-month attendance records
+ *  3. Auto-resolve — pending_approval → present when disabling manager approval
+ *  4. Audit log    — every actual write appended to org_settings_audit.json
+ *  5. Event        — ORG_SETTINGS_UPDATED emitted after successful write
  */
 import { EventEmitter } from 'events';
 import { Router } from 'express';
@@ -22,23 +27,31 @@ import { logSettingsUpdate } from '../audit/audit.service';
 
 // ─── Storage shapes ───────────────────────────────────────────────────────────
 
+interface WorkSchedule {
+  startTime: string;   // HH:mm
+  endTime:   string;   // HH:mm
+  flexible:  boolean;
+}
+
+interface LateRule        { graceMinutes: number }
+interface EarlyLeaveRule  { graceMinutes: number }
+interface PhotoRule       { requireCheckInPhoto: boolean; requireCheckOutPhoto: boolean }
+interface LocationRule    { enabled: boolean; radiusMeters: number }
+
 interface OrgSettingsRecord {
   id:                      string;
   attendanceMode:          'WORKFORCE' | 'SIMPLE';
   requireManagerApproval:  boolean;
-  /**
-   * Maximum gap (minutes) between adjacent work segments that still causes them
-   * to be merged by the Snap Time Engine.  0 = only touching segments merge.
-   * Default: 0.
-   */
   continuousGapMinutes:    number;
-  /**
-   * Approval chain for RETROACTIVE_CHECKIN requests.
-   *   HR_ONLY          — HR approves directly; no manager step.
-   *   MANAGER_THEN_HR  — Manager approves first, then HR (default).
-   *   MANAGER_ONLY     — Manager approves; no HR step required.
-   */
   retroApprovalMode:       'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY';
+  // Attendance condition settings
+  workSchedule?:           WorkSchedule;
+  lateRule?:               LateRule;
+  earlyLeaveRule?:         EarlyLeaveRule;
+  checkInWindowMinutes?:   number;   // minutes before shift start allowed; 0 = no restriction
+  absentAfterMinutes?:     number;   // minutes after shift start → block check-in; 0 = disabled
+  photoRule?:              PhotoRule;
+  locationRule?:           LocationRule;
   createdAt:               string;
   updatedAt:               string;
 }
@@ -46,8 +59,9 @@ interface OrgSettingsRecord {
 interface OrgSettingsAuditRecord {
   id:              string;
   changedByUserId: string;
-  previousValue:   Pick<OrgSettingsRecord, 'attendanceMode' | 'requireManagerApproval' | 'continuousGapMinutes' | 'retroApprovalMode'>;
-  newValue:        Pick<OrgSettingsRecord, 'attendanceMode' | 'requireManagerApproval' | 'continuousGapMinutes' | 'retroApprovalMode'>;
+  changedFields:   string[];
+  previousValue:   Record<string, unknown>;
+  newValue:        Record<string, unknown>;
   timestamp:       string;
   createdAt:       string;
   updatedAt:       string;
@@ -55,8 +69,8 @@ interface OrgSettingsAuditRecord {
 
 // ─── Stores ───────────────────────────────────────────────────────────────────
 
-const store          = new JsonRepository<OrgSettingsRecord>('org_settings');
-const auditStore     = new JsonRepository<OrgSettingsAuditRecord>('org_settings_audit');
+const store           = new JsonRepository<OrgSettingsRecord>('org_settings');
+const auditStore      = new JsonRepository<OrgSettingsAuditRecord>('org_settings_audit');
 const attendanceStore = new JsonRepository<AttendanceRecord>('attendance');
 
 // ─── In-process event bus ────────────────────────────────────────────────────
@@ -64,205 +78,267 @@ const attendanceStore = new JsonRepository<AttendanceRecord>('attendance');
 export const orgSettingsEvents = new EventEmitter();
 export const ORG_SETTINGS_UPDATED = 'ORG_SETTINGS_UPDATED';
 
-// ─── Defaults — must match existing backend behavior exactly ─────────────────
-//
-// attendanceMode: WORKFORCE  → no behavior change until HR explicitly switches
-// requireManagerApproval: true  → existing pending_approval flow unchanged
+// ─── Defaults ─────────────────────────────────────────────────────────────────
 
-const SEED_DEFAULTS = {
+const DEFAULTS = {
   attendanceMode:         'WORKFORCE' as const,
   requireManagerApproval: true,
   continuousGapMinutes:   0,
   retroApprovalMode:      'MANAGER_THEN_HR' as const,
+  workSchedule:           { startTime: '08:30', endTime: '17:30', flexible: false },
+  lateRule:               { graceMinutes: 15 },
+  earlyLeaveRule:         { graceMinutes: 5 },
+  checkInWindowMinutes:   30,
+  absentAfterMinutes:     0,
+  photoRule:              { requireCheckInPhoto: true, requireCheckOutPhoto: false },
+  locationRule:           { enabled: false, radiusMeters: 100 },
 };
 
-/** Get the singleton record, auto-creating with safe defaults if missing. */
 function getOrCreate(): OrgSettingsRecord {
   const existing = store.findOne(() => true);
   if (existing) return existing;
-  return store.create(SEED_DEFAULTS);
+  return store.create({
+    attendanceMode:         DEFAULTS.attendanceMode,
+    requireManagerApproval: DEFAULTS.requireManagerApproval,
+    continuousGapMinutes:   DEFAULTS.continuousGapMinutes,
+    retroApprovalMode:      DEFAULTS.retroApprovalMode,
+  } as Omit<OrgSettingsRecord, 'id' | 'createdAt' | 'updatedAt'>);
 }
 
-// ─── Response shape (frontend contract) ──────────────────────────────────────
+// ─── Response shape ───────────────────────────────────────────────────────────
 
 function toClientShape(record: OrgSettingsRecord, isSuperAdmin: boolean) {
   return {
     mode:                   record.attendanceMode === 'SIMPLE' ? 'SIMPLE' : 'FULL',
-    requireManagerApproval: record.requireManagerApproval ?? true,
-    continuousGapMinutes:   record.continuousGapMinutes   ?? 0,
-    retroApprovalMode:      record.retroApprovalMode      ?? 'MANAGER_THEN_HR',
+    requireManagerApproval: record.requireManagerApproval ?? DEFAULTS.requireManagerApproval,
+    continuousGapMinutes:   record.continuousGapMinutes   ?? DEFAULTS.continuousGapMinutes,
+    retroApprovalMode:      record.retroApprovalMode      ?? DEFAULTS.retroApprovalMode,
     superAdminEnabled:      isSuperAdmin,
-    hrReportImageMode:      'ON_DEMAND' as const,
+    workSchedule:           record.workSchedule           ?? DEFAULTS.workSchedule,
+    lateRule:               record.lateRule               ?? DEFAULTS.lateRule,
+    earlyLeaveRule:         record.earlyLeaveRule         ?? DEFAULTS.earlyLeaveRule,
+    checkInWindowMinutes:   record.checkInWindowMinutes   ?? DEFAULTS.checkInWindowMinutes,
+    absentAfterMinutes:     record.absentAfterMinutes     ?? DEFAULTS.absentAfterMinutes,
+    photoRule:              record.photoRule              ?? DEFAULTS.photoRule,
+    locationRule:           record.locationRule           ?? DEFAULTS.locationRule,
+    hrReport:               { imageMode: 'ON_DEMAND' as const },
   };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function deepEq(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function clampInt(v: number, min = 0): number {
+  return Math.max(min, Math.floor(Number(v)));
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 const router = Router();
 
-/**
- * GET /org-settings
- * Returns feature-flag config for the authenticated user.
- * superAdminEnabled is per-user (derived from role), not a stored flag.
- */
 router.get('/', authenticate, (req, res) => {
   const record = getOrCreate();
-  res.json({
-    success: true,
-    data:    toClientShape(record, req.user?.role === 'super_admin'),
-  });
+  res.json({ success: true, data: toClientShape(record, req.user?.role === 'super_admin') });
 });
 
-/**
- * PATCH /org-settings
- * Super admin can flip mode and requireManagerApproval.
- *
- * Guardrails (in order):
- *  1. Idempotent check   — bail out early with 200 if nothing would change
- *  2. Mode lock check    — 409 if switching modes with current-month records
- *  3. Write              — persist only changed fields
- *  4. Approval cleanup   — auto-resolve pending_approval when disabling approval
- *  5. Audit              — append entry to org_settings_audit.json
- *  6. Event              — emit ORG_SETTINGS_UPDATED with new config
- */
-router.patch('/', authenticate, requireRole('super_admin'), (req, res) => {
+router.patch('/', authenticate, requireRole(['admin', 'hr_branch']), (req, res) => {
   const record = getOrCreate();
 
-  const { mode, requireManagerApproval, continuousGapMinutes, retroApprovalMode } = req.body as {
+  const body = req.body as {
     mode?:                   'FULL' | 'SIMPLE';
     requireManagerApproval?: boolean;
     continuousGapMinutes?:   number;
     retroApprovalMode?:      'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY';
+    workSchedule?:           Partial<WorkSchedule>;
+    lateRule?:               Partial<LateRule>;
+    earlyLeaveRule?:         Partial<EarlyLeaveRule>;
+    checkInWindowMinutes?:   number;
+    absentAfterMinutes?:     number;
+    photoRule?:              Partial<PhotoRule>;
+    locationRule?:           Partial<LocationRule>;
   };
 
-  // Build the desired new state from the payload
+  // ── Build desired values ──────────────────────────────────────────────────
+
+  const storedWorkSchedule  = record.workSchedule  ?? DEFAULTS.workSchedule;
+  const storedLateRule      = record.lateRule      ?? DEFAULTS.lateRule;
+  const storedEarlyRule     = record.earlyLeaveRule ?? DEFAULTS.earlyLeaveRule;
+  const storedPhotoRule     = record.photoRule     ?? DEFAULTS.photoRule;
+  const storedLocationRule  = record.locationRule  ?? DEFAULTS.locationRule;
+
   const desiredMode: 'WORKFORCE' | 'SIMPLE' =
-    mode !== undefined
-      ? mode === 'SIMPLE' ? 'SIMPLE' : 'WORKFORCE'
+    body.mode !== undefined
+      ? body.mode === 'SIMPLE' ? 'SIMPLE' : 'WORKFORCE'
       : record.attendanceMode;
 
-  const desiredApproval: boolean =
-    requireManagerApproval !== undefined
-      ? Boolean(requireManagerApproval)
-      : record.requireManagerApproval;
+  const desiredApproval = body.requireManagerApproval !== undefined
+    ? Boolean(body.requireManagerApproval)
+    : record.requireManagerApproval;
 
-  const desiredGap: number =
-    continuousGapMinutes !== undefined
-      ? Math.max(0, Math.floor(Number(continuousGapMinutes)))
-      : (record.continuousGapMinutes ?? 0);
+  const desiredGap = body.continuousGapMinutes !== undefined
+    ? clampInt(body.continuousGapMinutes)
+    : (record.continuousGapMinutes ?? 0);
 
   const desiredRetroMode: 'HR_ONLY' | 'MANAGER_THEN_HR' | 'MANAGER_ONLY' =
-    retroApprovalMode !== undefined
-      ? retroApprovalMode
+    body.retroApprovalMode !== undefined
+      ? body.retroApprovalMode
       : (record.retroApprovalMode ?? 'MANAGER_THEN_HR');
 
-  // ── Guardrail 1: Idempotent ──────────────────────────────────────────────
-  // If every requested field already matches the stored value, skip the write.
-  const modeChanging       = desiredMode       !== record.attendanceMode;
-  const approvalChanging   = desiredApproval   !== record.requireManagerApproval;
-  const gapChanging        = desiredGap        !== (record.continuousGapMinutes ?? 0);
-  const retroModeChanging  = desiredRetroMode  !== (record.retroApprovalMode ?? 'MANAGER_THEN_HR');
+  const desiredWorkSchedule: WorkSchedule = body.workSchedule
+    ? { ...storedWorkSchedule, ...body.workSchedule }
+    : storedWorkSchedule;
 
-  if (!modeChanging && !approvalChanging && !gapChanging && !retroModeChanging) {
-    return res.json({ success: true, data: toClientShape(record, true) });
+  const desiredLateRule: LateRule = body.lateRule
+    ? { graceMinutes: clampInt(body.lateRule.graceMinutes ?? storedLateRule.graceMinutes) }
+    : storedLateRule;
+
+  const desiredEarlyRule: EarlyLeaveRule = body.earlyLeaveRule
+    ? { graceMinutes: clampInt(body.earlyLeaveRule.graceMinutes ?? storedEarlyRule.graceMinutes) }
+    : storedEarlyRule;
+
+  const desiredCheckInWindow = body.checkInWindowMinutes !== undefined
+    ? clampInt(body.checkInWindowMinutes)
+    : (record.checkInWindowMinutes ?? DEFAULTS.checkInWindowMinutes);
+
+  const desiredAbsentAfter = body.absentAfterMinutes !== undefined
+    ? clampInt(body.absentAfterMinutes)
+    : (record.absentAfterMinutes ?? DEFAULTS.absentAfterMinutes);
+
+  const desiredPhotoRule: PhotoRule = body.photoRule
+    ? { ...storedPhotoRule, ...body.photoRule }
+    : storedPhotoRule;
+
+  const desiredLocationRule: LocationRule = body.locationRule
+    ? {
+        enabled:      body.locationRule.enabled      ?? storedLocationRule.enabled,
+        radiusMeters: body.locationRule.radiusMeters !== undefined
+          ? Math.max(1, Number(body.locationRule.radiusMeters))
+          : storedLocationRule.radiusMeters,
+      }
+    : storedLocationRule;
+
+  // ── Idempotent check ─────────────────────────────────────────────────────
+
+  const changes: Record<string, boolean> = {
+    mode:                desiredMode          !== record.attendanceMode,
+    requireMgr:          desiredApproval      !== record.requireManagerApproval,
+    gap:                 desiredGap           !== (record.continuousGapMinutes ?? 0),
+    retro:               desiredRetroMode     !== (record.retroApprovalMode ?? 'MANAGER_THEN_HR'),
+    workSchedule:        !deepEq(desiredWorkSchedule,  storedWorkSchedule),
+    lateRule:            !deepEq(desiredLateRule,       storedLateRule),
+    earlyLeaveRule:      !deepEq(desiredEarlyRule,      storedEarlyRule),
+    checkInWindow:       desiredCheckInWindow !== (record.checkInWindowMinutes ?? DEFAULTS.checkInWindowMinutes),
+    absentAfter:         desiredAbsentAfter   !== (record.absentAfterMinutes   ?? DEFAULTS.absentAfterMinutes),
+    photoRule:           !deepEq(desiredPhotoRule,      storedPhotoRule),
+    locationRule:        !deepEq(desiredLocationRule,   storedLocationRule),
+  };
+
+  const anyChange = Object.values(changes).some(Boolean);
+  if (!anyChange) {
+    return res.json({ success: true, data: toClientShape(record, req.user?.role === 'super_admin') });
   }
 
-  // ── Guardrail 2: Mode transition lock ────────────────────────────────────
-  // Block switching attendanceMode if ANY attendance record exists in the
-  // current calendar month. A partial month of mixed-mode records would
-  // produce incoherent summary reports.
-  if (modeChanging) {
-    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-    const hasCurrentMonthRecords = attendanceStore.exists(
-      (r) => r.date.startsWith(currentMonth),
-    );
-    if (hasCurrentMonthRecords) {
+  // ── Mode lock ─────────────────────────────────────────────────────────────
+
+  if (changes.mode) {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    if (attendanceStore.exists((r) => r.date.startsWith(currentMonth))) {
       return res.status(409).json({
         success: false,
         error:   'MODE_CHANGE_LOCKED',
-        message: `Cannot switch attendance mode while records exist for ${currentMonth}. Try again after the month rolls over, or delete the current-month records first.`,
+        message: `Cannot switch attendance mode while records exist for ${currentMonth}.`,
       });
     }
   }
 
-  // ── Guardrail 3: Write ────────────────────────────────────────────────────
-  const previousValue = {
-    attendanceMode:         record.attendanceMode,
-    requireManagerApproval: record.requireManagerApproval,
-    continuousGapMinutes:   record.continuousGapMinutes   ?? 0,
-    retroApprovalMode:      record.retroApprovalMode      ?? 'MANAGER_THEN_HR' as const,
-  };
+  // ── Build previous/new for audit ─────────────────────────────────────────
+
+  const previousValue: Record<string, unknown> = {};
+  const newValue:      Record<string, unknown> = {};
+  const changedFields: string[] = [];
+
+  if (changes.mode)           { previousValue.attendanceMode         = record.attendanceMode;          newValue.attendanceMode         = desiredMode;          changedFields.push('attendanceMode'); }
+  if (changes.requireMgr)     { previousValue.requireManagerApproval = record.requireManagerApproval;  newValue.requireManagerApproval = desiredApproval;       changedFields.push('requireManagerApproval'); }
+  if (changes.gap)            { previousValue.continuousGapMinutes   = record.continuousGapMinutes;    newValue.continuousGapMinutes   = desiredGap;            changedFields.push('continuousGapMinutes'); }
+  if (changes.retro)          { previousValue.retroApprovalMode      = record.retroApprovalMode;       newValue.retroApprovalMode      = desiredRetroMode;      changedFields.push('retroApprovalMode'); }
+  if (changes.workSchedule)   { previousValue.workSchedule           = storedWorkSchedule;             newValue.workSchedule           = desiredWorkSchedule;   changedFields.push('workSchedule'); }
+  if (changes.lateRule)       { previousValue.lateRule               = storedLateRule;                 newValue.lateRule               = desiredLateRule;       changedFields.push('lateRule'); }
+  if (changes.earlyLeaveRule) { previousValue.earlyLeaveRule         = storedEarlyRule;                newValue.earlyLeaveRule         = desiredEarlyRule;      changedFields.push('earlyLeaveRule'); }
+  if (changes.checkInWindow)  { previousValue.checkInWindowMinutes   = record.checkInWindowMinutes;    newValue.checkInWindowMinutes   = desiredCheckInWindow;  changedFields.push('checkInWindowMinutes'); }
+  if (changes.absentAfter)    { previousValue.absentAfterMinutes     = record.absentAfterMinutes;      newValue.absentAfterMinutes     = desiredAbsentAfter;    changedFields.push('absentAfterMinutes'); }
+  if (changes.photoRule)      { previousValue.photoRule              = storedPhotoRule;                newValue.photoRule              = desiredPhotoRule;      changedFields.push('photoRule'); }
+  if (changes.locationRule)   { previousValue.locationRule           = storedLocationRule;             newValue.locationRule           = desiredLocationRule;   changedFields.push('locationRule'); }
+
+  // ── Write ─────────────────────────────────────────────────────────────────
 
   const patch: Partial<OrgSettingsRecord> = {};
-  if (modeChanging)      patch.attendanceMode         = desiredMode;
-  if (approvalChanging)  patch.requireManagerApproval = desiredApproval;
-  if (gapChanging)       patch.continuousGapMinutes   = desiredGap;
-  if (retroModeChanging) patch.retroApprovalMode      = desiredRetroMode;
+  if (changes.mode)           patch.attendanceMode         = desiredMode;
+  if (changes.requireMgr)     patch.requireManagerApproval = desiredApproval;
+  if (changes.gap)            patch.continuousGapMinutes   = desiredGap;
+  if (changes.retro)          patch.retroApprovalMode      = desiredRetroMode;
+  if (changes.workSchedule)   patch.workSchedule           = desiredWorkSchedule;
+  if (changes.lateRule)       patch.lateRule               = desiredLateRule;
+  if (changes.earlyLeaveRule) patch.earlyLeaveRule         = desiredEarlyRule;
+  if (changes.checkInWindow)  patch.checkInWindowMinutes   = desiredCheckInWindow;
+  if (changes.absentAfter)    patch.absentAfterMinutes     = desiredAbsentAfter;
+  if (changes.photoRule)      patch.photoRule              = desiredPhotoRule;
+  if (changes.locationRule)   patch.locationRule           = desiredLocationRule;
 
   const updated = store.updateById(record.id, patch) ?? record;
 
-  // ── Guardrail 4: Auto-resolve pending_approval records ───────────────────
-  // When requireManagerApproval is switched OFF, every record currently
-  // sitting at pending_approval is no longer actionable by managers.
-  // Promote them to 'present' so they appear in reports and don't pile up.
+  // ── Auto-resolve pending_approval when disabling manager approval ─────────
+
   let autoResolvedCount = 0;
-  if (approvalChanging && !desiredApproval) {
+  if (changes.requireMgr && !desiredApproval) {
     attendanceStore.transaction((items) =>
       items.map((r) => {
         if (r.status !== 'pending_approval') return r;
         autoResolvedCount++;
-        return {
-          ...r,
-          status:    'present' as const,
-          approvedBy: 'SYSTEM_AUTO',
-          updatedAt:  new Date().toISOString(),
-        };
+        return { ...r, status: 'present' as const, approvedBy: 'SYSTEM_AUTO', updatedAt: new Date().toISOString() };
       }),
     );
   }
 
-  // ── Guardrail 5: Audit log ────────────────────────────────────────────────
-  const newValue = {
-    attendanceMode:         updated.attendanceMode,
-    requireManagerApproval: updated.requireManagerApproval,
-    continuousGapMinutes:   updated.continuousGapMinutes   ?? 0,
-    retroApprovalMode:      updated.retroApprovalMode      ?? 'MANAGER_THEN_HR',
-  };
+  // ── Audit ─────────────────────────────────────────────────────────────────
 
-  // Domain-specific audit (org_settings_audit.json — kept for backwards compat)
   auditStore.create({
     changedByUserId: req.user!.userId,
+    changedFields,
     previousValue,
     newValue,
     timestamp: new Date().toISOString(),
   } as Omit<OrgSettingsAuditRecord, 'id' | 'createdAt' | 'updatedAt'>);
 
-  // Central audit log (audit_logs.json)
-  const changedFields: string[] = [];
-  if (modeChanging)      changedFields.push('attendanceMode');
-  if (approvalChanging)  changedFields.push('requireManagerApproval');
-  if (gapChanging)       changedFields.push('continuousGapMinutes');
-  if (retroModeChanging) changedFields.push('retroApprovalMode');
-
   logSettingsUpdate(
     req.user!.userId,
     changedFields,
-    previousValue as unknown as Record<string, unknown>,
-    newValue      as unknown as Record<string, unknown>,
+    previousValue,
+    newValue,
   );
 
-  // ── Guardrail 6: In-process event ─────────────────────────────────────────
+  // ── Event ─────────────────────────────────────────────────────────────────
+
   orgSettingsEvents.emit(ORG_SETTINGS_UPDATED, {
     attendanceMode:         updated.attendanceMode,
     requireManagerApproval: updated.requireManagerApproval,
     continuousGapMinutes:   updated.continuousGapMinutes   ?? 0,
     retroApprovalMode:      updated.retroApprovalMode      ?? 'MANAGER_THEN_HR',
+    workSchedule:           updated.workSchedule           ?? DEFAULTS.workSchedule,
+    lateRule:               updated.lateRule               ?? DEFAULTS.lateRule,
+    earlyLeaveRule:         updated.earlyLeaveRule         ?? DEFAULTS.earlyLeaveRule,
+    checkInWindowMinutes:   updated.checkInWindowMinutes   ?? DEFAULTS.checkInWindowMinutes,
+    absentAfterMinutes:     updated.absentAfterMinutes     ?? DEFAULTS.absentAfterMinutes,
+    photoRule:              updated.photoRule              ?? DEFAULTS.photoRule,
+    locationRule:           updated.locationRule           ?? DEFAULTS.locationRule,
     autoResolvedCount,
   });
 
   return res.json({
     success: true,
-    data:    toClientShape(updated, true),   // caller is always super_admin here
+    data:    toClientShape(updated, req.user?.role === 'super_admin'),
     ...(autoResolvedCount > 0 && { autoResolvedCount }),
   });
 });

@@ -1,8 +1,8 @@
-import type { AttendanceRecord, AttendanceStatus, Branch, Department, UserRole } from '@hospital-hr/shared';
+﻿import type { AttendanceRecord, AttendanceStatus, Branch, CheckoutLateReason, Department, UserRole } from '@hospital-hr/shared';
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
-import { hasPermission } from '../../core/permissions';
+import { hasHrAccess } from '../../core/permissions';
 import { haversineMeters, isWithinRadius } from '../../shared/utils/geo';
 import type { UserRecord } from '../employees/employee.service';
 import { computeMonthlySummary, type MonthlySummary } from './hours';
@@ -10,6 +10,7 @@ import { resolveWorkingTime } from '../schedules/schedule.resolver';
 import type { ResolvedWorkingTime } from '../schedules/schedule.resolver';
 import { resolveCheckInStatus, resolveCheckOutStatus } from './attendance.processor';
 import { getLeaveStatusForDate } from '../leave/leaveAttendance.adapter';
+import { getEffectiveBranchSettings } from '../branch-settings/branchSettings.runtime';
 
 // ─── Repositories ─────────────────────────────────────────────────────────────
 
@@ -21,17 +22,21 @@ const deptStore:       IRepository<Department>        = new JsonRepository<Depar
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
 export interface CheckInDto {
-  lat?:       number;
-  lng?:       number;
-  photoPath?: string;   // relative filename from multer, e.g. "1234-abc.jpg"
-  note?:      string;
+  lat?:                 number;
+  lng?:                 number;
+  photoPath?:           string;
+  note?:                string;
+  shiftCode?:           string;   // required for multi-shift employees
+  outOfScheduleReason?: string;   // required when checking in after absent mark
 }
 
 export interface CheckOutDto {
-  lat?:       number;
-  lng?:       number;
-  photoPath?: string;
-  note?:      string;
+  lat?:                number;
+  lng?:                number;
+  photoPath?:          string;
+  note?:               string;
+  checkoutLateReason?: CheckoutLateReason;   // required when checkout > shift end + threshold
+  claimedCheckOutTime?: string;              // HH:mm — user-stated end when reason = forgot
 }
 
 export interface AttendanceFilters {
@@ -69,10 +74,9 @@ setInterval(() => {
 }, 300_000); // every 5 minutes
 
 
-/** Used only in approve() to recalculate status after a schedule is assigned. */
-const LATE_GRACE_MINUTES = 15;
+/** Parse HH:mm into minutes-since-midnight (duplicate kept local to avoid circular import). */
 
-/** Return today's date string in YYYY-MM-DD. */
+/** Return today's date string in YYYY-MM-DD (local time). */
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -208,7 +212,7 @@ function verifyEmployeeAccess(
   actorRole: UserRole,
   targetUserId: string,
 ): void {
-  if (hasPermission(actorRole, 'hr')) return;
+  if (hasHrAccess(actorRole)) return;
 
   const employee = employeeStore.findById(targetUserId);
   if (!employee) throw new AppError(404, 'Employee not found', 'NOT_FOUND');
@@ -228,77 +232,202 @@ export const attendanceService = {
   // ── Check-in ─────────────────────────────────────────────────────────────────
 
   checkIn(userId: string, branchId: string, dto: CheckInDto): AttendanceRecord {
-    const today = todayStr();
+    const today   = todayStr();
+    const bsettings = getEffectiveBranchSettings(branchId);
 
-    // Photo is mandatory
-    if (!dto.photoPath) {
+    // Photo requirement (configurable per branch)
+    if (bsettings.requireCheckInPhoto && !dto.photoPath) {
       throw new AppError(400, 'A check-in photo is required', 'PHOTO_REQUIRED');
     }
 
-    // Guard: already checked in today
-    const existing = attendanceStore.findOne(
-      (r) => r.userId === userId && r.date === today,
-    );
-    if (existing) {
-      throw new AppError(409, 'Already checked in today', 'ALREADY_CHECKED_IN');
+    // Guard: already checked in for this shift (userId + date + shiftCode)
+    // shiftCode=undefined means single-shift — check for any open record today
+    const existing = attendanceStore.findOne((r) => {
+      if (r.userId !== userId || r.date !== today) return false;
+      if (dto.shiftCode) return r.shiftCode === dto.shiftCode;
+      return !r.shiftCode; // single-shift: only block if no shiftCode on existing record
+    });
+    if (existing && existing.status !== 'absent') {
+      throw new AppError(409, 'Already checked in for this shift', 'ALREADY_CHECKED_IN');
     }
 
-    // GPS fence validation
-    enforceGpsFence(branchId, dto.lat, dto.lng);
+    // GPS fence validation (skipped when location rule is disabled for this branch)
+    if (bsettings.locationEnabled) {
+      enforceGpsFence(branchId, dto.lat, dto.lng);
+    }
 
     // Leave projection — synchronous JSON read, no I/O.
-    // Passed directly into the engine; engines return 'on_leave' when true.
     const leaveInfo = getLeaveStatusForDate(userId, today);
 
-    // Determine status — delegates to processor so SIMPLE mode is respected.
     const now   = new Date();
     const times = getScheduledTimes(userId, today);
-    const status = resolveCheckInStatus(now, times, leaveInfo);
+
+    // Check-in time-window enforcement (only when a shift is scheduled)
+    if (times && !leaveInfo.isOnLeave) {
+      const nowMins        = now.getHours() * 60 + now.getMinutes();
+      const shiftStartMins = toMinutes(times.startTime);
+
+      // Too early: enforce check-in window
+      const windowMins = bsettings.checkInWindowMinutes;
+      if (windowMins > 0 && nowMins < shiftStartMins - windowMins) {
+        const earliest = `${String(Math.floor((shiftStartMins - windowMins) / 60)).padStart(2, '0')}:${String((shiftStartMins - windowMins) % 60).padStart(2, '0')}`;
+        throw new AppError(400, `ยังไม่ถึงเวลาเช็คอิน (เช็คอินได้ตั้งแต่ ${earliest} น.)`, 'TOO_EARLY_CHECKIN');
+      }
+
+      // Too late: absent threshold — mark existing record absent, allow out-of-schedule check-in
+      const absentMins = bsettings.absentAfterMinutes;
+      if (absentMins > 0 && nowMins > shiftStartMins + absentMins) {
+        // Ensure an absent record exists for the scheduled shift
+        if (existing?.status !== 'absent') {
+          if (existing) {
+            attendanceStore.updateById(existing.id, { status: 'absent' });
+          } else {
+            attendanceStore.create({
+              userId, branchId, date: today,
+              shiftCode: dto.shiftCode,
+              status: 'absent',
+            } as Omit<AttendanceRecord, 'id' | 'createdAt' | 'updatedAt'>);
+          }
+        }
+        // Fall through as OUT_OF_SCHEDULE_CHECKIN — handled below
+        return attendanceStore.create({
+          userId, branchId,
+          date:               today,
+          shiftCode:          dto.shiftCode,
+          checkInTime:        now.toISOString(),
+          checkInPhoto:       dto.photoPath,
+          checkInLat:         dto.lat,
+          checkInLng:         dto.lng,
+          status:             'in_progress',
+          checkInType:        'OUT_OF_SCHEDULE_CHECKIN',
+          outOfScheduleReason: dto.outOfScheduleReason ?? 'มาสายเกินกำหนด',
+          note:               dto.note,
+        } as Omit<AttendanceRecord, 'id' | 'createdAt' | 'updatedAt'>);
+      }
+    }
+
+    // No schedule → in_progress (pending_approval only after checkout)
+    const hasSchedule = !!times && !leaveInfo.isOnLeave;
+    const checkInType: AttendanceRecord['checkInType'] =
+      hasSchedule ? 'NORMAL_CHECKIN' : 'OUT_OF_SCHEDULE_CHECKIN';
+
+    const status = hasSchedule
+      ? resolveCheckInStatus(now, times, leaveInfo, branchId)
+      : 'in_progress';
 
     return attendanceStore.create({
       userId,
-      date:          today,
-      checkInTime:   now.toISOString(),
-      checkInPhoto:  dto.photoPath,
-      checkInLat:    dto.lat,
-      checkInLng:    dto.lng,
+      branchId,
+      date:               today,
+      shiftCode:          dto.shiftCode,
+      checkInTime:        now.toISOString(),
+      checkInPhoto:       dto.photoPath,
+      checkInLat:         dto.lat,
+      checkInLng:         dto.lng,
       status,
-      note:          dto.note,
-    });
+      checkInType,
+      outOfScheduleReason: !hasSchedule ? dto.outOfScheduleReason : undefined,
+      note:               dto.note,
+    } as Omit<AttendanceRecord, 'id' | 'createdAt' | 'updatedAt'>);
   },
 
   // ── Check-out ────────────────────────────────────────────────────────────────
 
   checkOut(userId: string, branchId: string, dto: CheckOutDto): AttendanceRecord {
-    const today = todayStr();
+    const today     = todayStr();
+    const bsettings = getEffectiveBranchSettings(branchId);
 
-    // Photo is mandatory
-    if (!dto.photoPath) {
+    // Photo requirement (configurable per branch)
+    if (bsettings.requireCheckOutPhoto && !dto.photoPath) {
       throw new AppError(400, 'A check-out photo is required', 'PHOTO_REQUIRED');
     }
 
-    // Must have checked in
-    const record = attendanceStore.findOne(
-      (r) => r.userId === userId && r.date === today,
-    );
+    // Find the most recent open (not checked out) record for today
+    // For multi-shift: match by shiftCode if provided
+    const allToday = attendanceStore.findAll(
+      (r) => r.userId === userId && r.date === today && !r.checkOutTime,
+    ).sort((a, b) => (b.checkInTime ?? '').localeCompare(a.checkInTime ?? ''));
+
+    const record = allToday[0] ?? null;
     if (!record) {
-      throw new AppError(400, 'No check-in found for today', 'NOT_CHECKED_IN');
-    }
-    if (record.checkOutTime) {
-      throw new AppError(409, 'Already checked out today', 'ALREADY_CHECKED_OUT');
+      throw new AppError(400, 'No open check-in found for today', 'NOT_CHECKED_IN');
     }
 
     // GPS fence validation
-    enforceGpsFence(branchId, dto.lat, dto.lng);
+    if (bsettings.locationEnabled) {
+      enforceGpsFence(branchId, dto.lat, dto.lng);
+    }
 
-    const now = new Date();
-    const times = getScheduledTimes(userId, today);
-
-    // Leave projection — same read as check-in, passed into engine.
+    const now       = new Date();
+    const times     = getScheduledTimes(userId, today);
     const leaveInfo = getLeaveStatusForDate(userId, today);
 
-    // Delegates to processor — engine decides early_leave / on_leave / unchanged.
-    const status = resolveCheckOutStatus(record.status, now, times?.endTime, leaveInfo);
+    // in_progress → pending_approval on checkout (no-schedule flow)
+    if (record.status === 'in_progress') {
+      return attendanceStore.updateById(record.id, {
+        checkOutTime:        now.toISOString(),
+        checkOutPhoto:       dto.photoPath,
+        checkOutLat:         dto.lat,
+        checkOutLng:         dto.lng,
+        status:              'pending_approval',
+        claimedCheckOutTime: dto.claimedCheckOutTime,
+        note:                dto.note ?? record.note,
+      }) as AttendanceRecord;
+    }
+
+    // Late-checkout handling: when checkout time exceeds shift end + threshold
+    const lateThreshold = bsettings.checkoutLateThresholdMinutes;
+    if (lateThreshold > 0 && times?.endTime) {
+      const nowMins     = now.getHours() * 60 + now.getMinutes();
+      const shiftEndMin = toMinutes(times.endTime);
+
+      if (nowMins > shiftEndMin + lateThreshold) {
+        if (!dto.checkoutLateReason) {
+          throw new AppError(400, 'กรุณาระบุเหตุผลที่เลิกงานช้า', 'CHECKOUT_LATE_REASON_REQUIRED');
+        }
+
+        if (dto.checkoutLateReason === 'forgot') {
+          // Checkout is recorded at shift end; send to HR for approval
+          return attendanceStore.updateById(record.id, {
+            checkOutTime:         now.toISOString(),
+            checkOutPhoto:        dto.photoPath,
+            checkOutLat:          dto.lat,
+            checkOutLng:          dto.lng,
+            status:               'pending_approval',
+            forgotCheckout:       true,
+            effectiveCheckOutTime: times.endTime,
+            checkoutLateReason:   'forgot',
+            note:                 dto.note ?? record.note,
+          }) as AttendanceRecord;
+        }
+
+        // extra_work / compensate / ot: shift closes at shift end; extra time → new out-of-schedule record
+        const baseStatus = resolveCheckOutStatus(record.status, new Date(`${today}T${times.endTime}`), times.endTime, leaveInfo, branchId);
+        attendanceStore.updateById(record.id, {
+          checkOutTime:       new Date(`${today}T${times.endTime}`).toISOString(),
+          status:             baseStatus,
+          effectiveCheckOutTime: times.endTime,
+          checkoutLateReason: dto.checkoutLateReason,
+        });
+
+        // Create an extra-time record for the time beyond shift end → pending_approval
+        return attendanceStore.create({
+          userId, branchId,
+          date:               today,
+          shiftCode:          record.shiftCode ? `${record.shiftCode}_EX` : 'EX',
+          checkInTime:        new Date(`${today}T${times.endTime}`).toISOString(),
+          checkOutTime:       now.toISOString(),
+          status:             'pending_approval',
+          checkInType:        'OUT_OF_SCHEDULE_CHECKIN',
+          outOfScheduleReason: dto.checkoutLateReason,
+          checkoutLateReason:  dto.checkoutLateReason,
+          note:               dto.note,
+        } as Omit<AttendanceRecord, 'id' | 'createdAt' | 'updatedAt'>);
+      }
+    }
+
+    // Normal checkout
+    const status = resolveCheckOutStatus(record.status, now, times?.endTime, leaveInfo, branchId);
 
     return attendanceStore.updateById(record.id, {
       checkOutTime:  now.toISOString(),
@@ -336,7 +465,7 @@ export const attendanceService = {
     // Determine which user IDs are visible
     let scopedIds: Set<string> | null = null;
 
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       // Manager: only employees in their departments
       const managedDeptIds = new Set<string>(
         deptStore
@@ -404,7 +533,8 @@ export const attendanceService = {
     if (times) {
       const shiftStartMins = toMinutes(times.startTime);
       const checkInMins    = checkIn.getHours() * 60 + checkIn.getMinutes();
-      status = checkInMins > shiftStartMins + LATE_GRACE_MINUTES ? 'late' : 'present';
+      const grace          = getEffectiveBranchSettings(record.branchId).lateGraceMinutes;
+      status = checkInMins > shiftStartMins + grace ? 'late' : 'present';
     } else {
       status = 'present';
     }

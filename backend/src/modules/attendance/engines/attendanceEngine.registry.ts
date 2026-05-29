@@ -21,14 +21,14 @@
 import type { AttendanceEngine } from './attendance.engine';
 import { normalAttendanceEngine } from './normalAttendance.engine';
 import { simpleAttendanceEngine }  from './simpleAttendance.engine';
-import { isSimpleMode }            from '../../org-settings/orgSettings.runtime';
+import { getEffectiveBranchSettings } from '../../branch-settings/branchSettings.runtime';
 
 /**
- * Returns the AttendanceEngine that matches the current org mode.
- *
- * Called on every check-in / check-out — intentionally lightweight:
- * isSimpleMode() reads a single in-memory boolean (no I/O).
+ * Returns the AttendanceEngine that matches the branch's attendanceMode.
+ * Defaults to normalAttendanceEngine when no branchId is provided.
  */
-export function getAttendanceEngine(): AttendanceEngine {
-  return isSimpleMode() ? simpleAttendanceEngine : normalAttendanceEngine;
+export function getAttendanceEngine(branchId?: string): AttendanceEngine {
+  if (!branchId) return normalAttendanceEngine;
+  const mode = getEffectiveBranchSettings(branchId).attendanceMode;
+  return mode === 'SIMPLE' ? simpleAttendanceEngine : normalAttendanceEngine;
 }

@@ -1,0 +1,26 @@
+[
+  {
+    "branchId": "branch-001",
+    "attendanceMode": "NORMAL",
+    "requireManagerApproval": true,
+    "continuousGapMinutes": 0,
+    "retroApprovalMode": "MANAGER_THEN_HR",
+    "checkInWindowMinutes": 30,
+    "lateGraceMinutes": 15,
+    "absentAfterMinutes": 0,
+    "earlyLeaveGraceMinutes": 5,
+    "checkoutLateThresholdMinutes": 0,
+    "consecutiveShiftGapMinutes": 60,
+    "maxInProgressHours": 24,
+    "locationEnabled": false,
+    "requireCheckInPhoto": true,
+    "requireCheckOutPhoto": false,
+    "otEnabled": false,
+    "otStartAfterMinutes": 30,
+    "otRequireApproval": true,
+    "hrReportImageMode": "ON_DEMAND",
+    "id": "f83b1b0d-a914-41ab-a1f8-20a0b5896753",
+    "createdAt": "2026-05-06T20:25:15.766Z",
+    "updatedAt": "2026-05-06T20:25:15.766Z"
+  }
+]

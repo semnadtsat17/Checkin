@@ -2,7 +2,8 @@ import type { HolidayType, HolidayDate } from '@hospital-hr/shared';
 import { apiFetch } from './client';
 
 export interface CreateTypeDto {
-  name: string;
+  name:      string;
+  branchId?: string;
 }
 
 export interface UpdateTypeDto {
@@ -24,8 +25,9 @@ export interface UpdateDateDto {
 export const holidaysApi = {
   // ── Holiday Types ────────────────────────────────────────────────────────────
 
-  listTypes() {
-    return apiFetch<HolidayType[]>('/api/holidays/types');
+  listTypes(branchId?: string) {
+    const qs = branchId ? `?branchId=${encodeURIComponent(branchId)}` : '';
+    return apiFetch<HolidayType[]>(`/api/holidays/types${qs}`);
   },
 
   createType(dto: CreateTypeDto) {

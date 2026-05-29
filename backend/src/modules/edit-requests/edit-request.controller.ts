@@ -11,7 +11,7 @@ export function create(req: Request, res: Response, next: NextFunction) {
   } catch (e) { next(e); }
 }
 
-// GET /edit-requests?status=&attendanceId=&from=&to=
+// GET /edit-requests?status=&attendanceId=&from=&to=&branchId=
 export function list(req: Request, res: Response, next: NextFunction) {
   try {
     const { userId, role } = req.user!;
@@ -21,6 +21,7 @@ export function list(req: Request, res: Response, next: NextFunction) {
       status:       q.status as EditRequestStatus | undefined,
       from:         q.from,
       to:           q.to,
+      branchId:     q.branchId,
     }));
   } catch (e) { next(e); }
 }

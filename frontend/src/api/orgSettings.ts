@@ -1,28 +1,20 @@
 import { apiFetch } from './client';
+import type { BranchSettings } from '@hospital-hr/shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface OrgSettingsConfig {
-  /** FULL = WORKFORCE mode (schedules, OT, approvals all active).
-   *  SIMPLE = check-in/out only, no schedule or OT enforcement. */
-  mode:                   'FULL' | 'SIMPLE';
-  /** When true, unscheduled check-ins surface as pending_approval for manager. */
+  /** NORMAL = schedule/OT/approvals. SIMPLE = check-in/out only. */
+  mode:                   'NORMAL' | 'SIMPLE';
   requireManagerApproval: boolean;
-  /** True only when the authenticated user's role is super_admin. */
   superAdminEnabled:      boolean;
-  /** Always ON_DEMAND — evidence photos never load in list views. */
-  hrReportImageMode:      'ON_DEMAND';
+  hrReportImageMode:      'ALWAYS' | 'ON_DEMAND' | 'OFF';
 }
 
-// ─── Safe fallback ───────────────────────────────────────────────────────────
-//
-// Matches existing production behavior exactly:
-//   mode FULL          → schedule / OT / approval logic unchanged
-//   requireManager true → pending_approval flow unchanged
-//   superAdmin false    → no extra controls shown (safe default)
+// ─── Safe fallback ────────────────────────────────────────────────────────────
 
 export const ORG_SETTINGS_DEFAULTS: OrgSettingsConfig = {
-  mode:                   'FULL',
+  mode:                   'NORMAL',
   requireManagerApproval: true,
   superAdminEnabled:      false,
   hrReportImageMode:      'ON_DEMAND',
@@ -30,15 +22,32 @@ export const ORG_SETTINGS_DEFAULTS: OrgSettingsConfig = {
 
 // ─── API calls ────────────────────────────────────────────────────────────────
 
-export function getOrgSettings(): Promise<OrgSettingsConfig> {
-  return apiFetch<OrgSettingsConfig>('/api/org-settings');
+export async function getOrgSettings(branchId: string): Promise<OrgSettingsConfig> {
+  const bs = await apiFetch<BranchSettings>(`/api/branch-settings/${branchId}`);
+  return {
+    mode:                   bs.attendanceMode === 'SIMPLE' ? 'SIMPLE' : 'NORMAL',
+    requireManagerApproval: bs.requireManagerApproval,
+    superAdminEnabled:      false,   // derived from role in auth context
+    hrReportImageMode:      bs.hrReportImageMode,
+  };
 }
 
-export function updateOrgSettings(
+export async function updateOrgSettings(
+  branchId: string,
   patch: Partial<Pick<OrgSettingsConfig, 'mode' | 'requireManagerApproval'>>,
 ): Promise<OrgSettingsConfig> {
-  return apiFetch<OrgSettingsConfig>('/api/org-settings', {
+  const bsPatch: Partial<BranchSettings> = {};
+  if (patch.mode !== undefined) bsPatch.attendanceMode = patch.mode === 'SIMPLE' ? 'SIMPLE' : 'NORMAL';
+  if (patch.requireManagerApproval !== undefined) bsPatch.requireManagerApproval = patch.requireManagerApproval;
+
+  const bs = await apiFetch<BranchSettings>(`/api/branch-settings/${branchId}`, {
     method: 'PATCH',
-    body:   JSON.stringify(patch),
+    body:   JSON.stringify(bsPatch),
   });
+  return {
+    mode:                   bs.attendanceMode === 'SIMPLE' ? 'SIMPLE' : 'NORMAL',
+    requireManagerApproval: bs.requireManagerApproval,
+    superAdminEnabled:      false,
+    hrReportImageMode:      bs.hrReportImageMode,
+  };
 }

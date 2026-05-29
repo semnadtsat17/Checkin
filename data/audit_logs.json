@@ -1,0 +1,27 @@
+[
+  {
+    "actorId": "emp-002",
+    "action": "UPDATE_SETTINGS",
+    "entityType": "SETTINGS",
+    "metadata": {
+      "changedFields": [
+        "photoRule"
+      ],
+      "before": {
+        "photoRule": {
+          "requireCheckInPhoto": true,
+          "requireCheckOutPhoto": false
+        }
+      },
+      "after": {
+        "photoRule": {
+          "requireCheckInPhoto": true,
+          "requireCheckOutPhoto": true
+        }
+      }
+    },
+    "id": "99b88374-f76a-44e3-8dcb-b14e367cd530",
+    "createdAt": "2026-04-23T15:44:35.098Z",
+    "updatedAt": "2026-04-23T15:44:35.098Z"
+  }
+]

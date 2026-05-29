@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   AttendanceRecord,
   AttendanceStatus,
   Department,
@@ -8,7 +8,7 @@ import type {
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
-import { hasPermission } from '../../core/permissions';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 import {
   computeWorkedMinutes,
   computeMonthlySummary,
@@ -157,7 +157,7 @@ function getScopedEmployees(
   actorRole:   UserRole,
   deptId?:     string,
 ): UserRecord[] {
-  if (hasPermission(actorRole, 'hr')) {
+  if (hasHrAccess(actorRole)) {
     return employeeStore.findAll(
       (e) => e.isActive && (!deptId || e.departmentId === deptId),
     );

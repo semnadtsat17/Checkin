@@ -1,0 +1,203 @@
+[
+  {
+    "nameTh": "เวรสองกะ (ด-น)",
+    "nameEn": "2-Shift (D/N)",
+    "forRole": "employee",
+    "monthlyWorkingHours": 240,
+    "shifts": [
+      {
+        "code": "D",
+        "nameTh": "กะกลางวัน",
+        "nameEn": "Day Shift",
+        "startTime": "08:00",
+        "endTime": "20:00",
+        "isOvernight": false,
+        "breakMinutes": 60
+      },
+      {
+        "code": "N",
+        "nameTh": "กะกลางคืน",
+        "nameEn": "Night Shift",
+        "startTime": "20:00",
+        "endTime": "08:00",
+        "isOvernight": true,
+        "breakMinutes": 60
+      }
+    ],
+    "isActive": true,
+    "id": "787b6f8b-902a-400b-bb14-72cd9d9b7c00",
+    "createdAt": "2026-03-06T18:32:41.586Z",
+    "updatedAt": "2026-03-06T18:32:41.587Z"
+  },
+  {
+    "nameTh": "เวรสามกะ (ช-บ-ด)",
+    "nameEn": "3-Shift (Morning/Afternoon/Night)",
+    "forRole": "employee",
+    "monthlyWorkingHours": 240,
+    "shifts": [
+      {
+        "code": "ช",
+        "nameTh": "กะเช้า",
+        "nameEn": "Morning Shift",
+        "startTime": "08:00",
+        "endTime": "16:00",
+        "isOvernight": false,
+        "breakMinutes": 60
+      },
+      {
+        "code": "บ",
+        "nameTh": "กะบ่าย",
+        "nameEn": "Afternoon Shift",
+        "startTime": "16:00",
+        "endTime": "00:00",
+        "isOvernight": false,
+        "breakMinutes": 60
+      },
+      {
+        "code": "ด",
+        "nameTh": "กะดึก",
+        "nameEn": "Night Shift",
+        "startTime": "00:00",
+        "endTime": "08:00",
+        "isOvernight": false,
+        "breakMinutes": 60
+      }
+    ],
+    "isActive": true,
+    "id": "48c76b0c-0fd3-4182-8436-137cfe3c6b2a",
+    "createdAt": "2026-03-06T18:32:41.601Z",
+    "updatedAt": "2026-03-23T09:11:32.100Z",
+    "type": "SHIFT_TIME"
+  },
+  {
+    "nameTh": "test",
+    "nameEn": "test",
+    "forRole": "employee",
+    "monthlyWorkingHours": 160,
+    "shifts": [
+      {
+        "code": "11",
+        "nameTh": "11",
+        "startTime": "08:00",
+        "endTime": "16:00",
+        "isOvernight": false,
+        "breakMinutes": 60
+      }
+    ],
+    "isActive": true,
+    "id": "56bcad61-efa5-491f-9013-3b73921c3a71",
+    "createdAt": "2026-03-06T23:00:51.844Z",
+    "updatedAt": "2026-03-06T23:00:51.844Z"
+  },
+  {
+    "nameTh": "ออฟฟิศ",
+    "nameEn": "Officer",
+    "forRole": "employee",
+    "type": "WEEKLY_WORKING_TIME",
+    "monthlyWorkingHours": 160,
+    "shifts": [],
+    "weeklySchedule": [
+      {
+        "dayOfWeek": 1,
+        "startTime": "08:00",
+        "endTime": "17:00"
+      },
+      {
+        "dayOfWeek": 2,
+        "startTime": "08:00",
+        "endTime": "17:00"
+      },
+      {
+        "dayOfWeek": 3,
+        "startTime": "08:00",
+        "endTime": "17:00"
+      },
+      {
+        "dayOfWeek": 4,
+        "startTime": "08:00",
+        "endTime": "17:00"
+      },
+      {
+        "dayOfWeek": 5,
+        "startTime": "08:00",
+        "endTime": "17:00"
+      }
+    ],
+    "isActive": true,
+    "id": "afea95ff-5ca2-4496-a1dd-ddf89ac72f44",
+    "createdAt": "2026-03-15T13:51:36.613Z",
+    "updatedAt": "2026-03-15T13:51:36.614Z"
+  },
+  {
+    "nameTh": "จ อ อา",
+    "forRole": "employee",
+    "type": "WEEKLY_WORKING_TIME",
+    "monthlyWorkingHours": 160,
+    "shifts": [],
+    "weeklySchedule": [
+      {
+        "dayOfWeek": 1,
+        "startTime": "01:00",
+        "endTime": "02:00"
+      },
+      {
+        "dayOfWeek": 2,
+        "startTime": "01:00",
+        "endTime": "02:00"
+      },
+      {
+        "dayOfWeek": 0,
+        "startTime": "01:00",
+        "endTime": "02:00"
+      }
+    ],
+    "isActive": true,
+    "id": "76acf386-10b6-48e6-8244-5290f4e60707",
+    "createdAt": "2026-03-16T11:41:07.456Z",
+    "updatedAt": "2026-03-16T11:41:07.456Z"
+  },
+  {
+    "nameTh": "1",
+    "nameEn": "1",
+    "forRole": "employee",
+    "type": "SHIFT_TIME",
+    "monthlyWorkingHours": 160,
+    "shifts": [
+      {
+        "code": "1",
+        "nameTh": "1",
+        "startTime": "21:00",
+        "endTime": "00:00",
+        "isOvernight": false,
+        "breakMinutes": 60
+      }
+    ],
+    "isActive": true,
+    "id": "fa0085ed-0832-4969-91ec-3110aeee9212",
+    "createdAt": "2026-03-23T09:50:44.449Z",
+    "updatedAt": "2026-03-24T14:38:00.213Z"
+  },
+  {
+    "branchId": "branch-001",
+    "nameTh": "กะปกติ (08:00–17:00)",
+    "nameEn": "Day Shift (08:00–17:00)",
+    "forRole": "employee",
+    "type": "SHIFT_TIME",
+    "monthlyWorkingHours": 160,
+    "isActive": true,
+    "shifts": [
+      {
+        "code": "D",
+        "nameTh": "กะกลางวัน",
+        "nameEn": "Day",
+        "startTime": "08:00",
+        "endTime": "17:00",
+        "isOvernight": false,
+        "breakMinutes": 60
+      }
+    ],
+    "id": "7448da1b-1296-43c4-9111-55d814253d8a",
+    "createdAt": "2026-05-06T20:25:15.769Z",
+    "updatedAt": "2026-05-06T20:25:15.769Z"
+  }
+]

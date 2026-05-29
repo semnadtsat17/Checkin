@@ -11,6 +11,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import type { AttendanceRecord, WorkSchedulePattern, WorkSchedule } from '@hospital-hr/shared';
 import { checkIn, checkOut, getToday } from '../api/attendance';
+import { ApiError } from '../api/client';
 import { scheduleApi } from '../api/schedules';
 import { workSchedulePatternApi } from '../api/subRoles';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,8 @@ type GpsState =
   | { status: 'locating' }
   | { status: 'ok'; lat: number; lng: number }
   | { status: 'error'; message: string };
+
+type CheckoutLateReason = 'forgot' | 'extra_work' | 'compensate' | 'ot';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,6 +58,89 @@ function statusColor(status: AttendanceRecord['status']): string {
 }
 
 const DAY_LABELS_SHORT = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+
+const LATE_REASON_LABELS: Record<CheckoutLateReason, string> = {
+  forgot:      'ลืมเช็คเอาท์ตรงเวลา',
+  extra_work:  'ทำงานล่วงเวลา (OT)',
+  compensate:  'ทดแทนเวลา',
+  ot:          'งานด่วน / นัดหมาย',
+};
+
+// ─── Late-checkout reason modal ───────────────────────────────────────────────
+
+function LateCheckoutModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: (reason: CheckoutLateReason, claimedTime?: string) => void;
+  onCancel:  () => void;
+}) {
+  const [reason,      setReason]      = useState<CheckoutLateReason | ''>('');
+  const [claimedTime, setClaimedTime] = useState('');
+  const [error,       setError]       = useState('');
+
+  function handleSubmit() {
+    if (!reason) { setError('กรุณาเลือกเหตุผล'); return; }
+    if (reason === 'forgot' && !claimedTime) { setError('กรุณาระบุเวลาที่เลิกงานจริง'); return; }
+    onConfirm(reason, reason === 'forgot' ? claimedTime : undefined);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-6">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl space-y-4">
+        <h2 className="text-base font-semibold text-gray-900">เลิกงานช้ากว่ากำหนด</h2>
+        <p className="text-sm text-gray-500">กรุณาระบุเหตุผลที่เลิกงานช้า</p>
+
+        <div className="space-y-2">
+          {(Object.keys(LATE_REASON_LABELS) as CheckoutLateReason[]).map((r) => (
+            <button
+              key={r}
+              onClick={() => { setReason(r); setError(''); }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-left text-sm font-medium transition-colors ${
+                reason === r
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {LATE_REASON_LABELS[r]}
+            </button>
+          ))}
+        </div>
+
+        {reason === 'forgot' && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              เวลาที่เลิกงานจริง (ประมาณ)
+            </label>
+            <input
+              type="time"
+              value={claimedTime}
+              onChange={(e) => setClaimedTime(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+            />
+          </div>
+        )}
+
+        {error && <p className="text-sm text-red-500">{error}</p>}
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={handleSubmit}
+            className="flex-1 rounded-xl bg-orange-500 py-2.5 text-sm font-semibold text-white hover:bg-orange-600"
+          >
+            ยืนยัน
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            ยกเลิก
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -109,6 +195,9 @@ export default function CheckInPage() {
   const todayCodes  = todayDay?.shiftCodes?.length ? todayDay.shiftCodes : (todayDay?.shiftCode ? [todayDay.shiftCode] : []);
   const todayShifts = subRole ? todayCodes.map(code => subRole.shifts.find(s => s.code === code)).filter(Boolean) : [];
 
+  // Shift selection (multi-shift employees)
+  const [selectedShiftCode, setSelectedShiftCode] = useState('');
+
   // Camera
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photo,   setPhoto]   = useState<File | null>(null);
@@ -145,13 +234,49 @@ export default function CheckInPage() {
   // Auto-request GPS on mount so it's ready before the user hits submit
   useEffect(() => { locateMe(); }, [locateMe]);
 
-  // Submit
+  // Submit state
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Late checkout modal
+  const [showLateModal, setShowLateModal] = useState(false);
+
   const isCheckedIn  = !!record?.checkInTime;
   const isCheckedOut = !!record?.checkOutTime;
+
+  const isMultiShift = !isCheckedIn && !isSimpleMode && todayCodes.length > 1;
+
+  // Core checkout handler — also called from modal with reason
+  const doCheckOut = useCallback(async (lateReason?: CheckoutLateReason, claimedTime?: string) => {
+    setError(null);
+    setSuccessMsg(null);
+    setSubmitting(true);
+    try {
+      const lat = gps.status === 'ok' ? gps.lat : undefined;
+      const lng = gps.status === 'ok' ? gps.lng : undefined;
+      const updated = await checkOut({
+        photo: photo ?? undefined,
+        lat,
+        lng,
+        checkoutLateReason:  lateReason,
+        claimedCheckOutTime: claimedTime,
+      });
+      setRecord(updated);
+      setSuccessMsg(t('attendance.checkOutSuccess'));
+      setPhoto(null);
+      setPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'CHECKOUT_LATE_REASON_REQUIRED') {
+        setShowLateModal(true);
+      } else {
+        setError(err instanceof Error ? err.message : t('common.error'));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }, [gps, photo, t]);
 
   const handleAction = useCallback(async () => {
     setError(null);
@@ -167,6 +292,11 @@ export default function CheckInPage() {
       return;
     }
 
+    if (isMultiShift && !selectedShiftCode) {
+      setError('กรุณาเลือกกะที่ต้องการเช็คอิน');
+      return;
+    }
+
     const lat = gps.status === 'ok' ? gps.lat : undefined;
     const lng = gps.status === 'ok' ? gps.lng : undefined;
 
@@ -174,7 +304,12 @@ export default function CheckInPage() {
     try {
       let updated: AttendanceRecord;
       if (!isCheckedIn) {
-        updated = await checkIn({ photo, lat, lng });
+        updated = await checkIn({
+          photo,
+          lat,
+          lng,
+          shiftCode: selectedShiftCode || undefined,
+        });
         setSuccessMsg(t('attendance.checkInSuccess'));
       } else {
         updated = await checkOut({ photo, lat, lng });
@@ -185,11 +320,15 @@ export default function CheckInPage() {
       setPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('common.error'));
+      if (err instanceof ApiError && err.code === 'CHECKOUT_LATE_REASON_REQUIRED') {
+        setShowLateModal(true);
+      } else {
+        setError(err instanceof Error ? err.message : t('common.error'));
+      }
     } finally {
       setSubmitting(false);
     }
-  }, [photo, gps, isCheckedIn, t]);
+  }, [photo, gps, isCheckedIn, isMultiShift, selectedShiftCode, t]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -266,6 +405,32 @@ export default function CheckInPage() {
             <div className="text-center text-sm text-gray-400">{t('attendance.notCheckedIn')}</div>
           )}
         </div>
+
+        {/* Shift selector — shown when not yet checked in and multiple shifts today */}
+        {isMultiShift && (
+          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+            <p className="text-xs font-medium text-gray-500">เลือกกะที่จะเช็คอิน</p>
+            <div className="flex flex-wrap gap-2">
+              {todayCodes.map((code) => {
+                const shift = subRole?.shifts.find(s => s.code === code);
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setSelectedShiftCode(code)}
+                    className={`rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                      selectedShiftCode === code
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    [{code}]{shift ? ` ${shift.startTime}–${shift.endTime}` : ''}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 3. Camera + GPS */}
         {!isCheckedOut && (
@@ -412,6 +577,17 @@ export default function CheckInPage() {
         </div>}
 
       </div>
+
+      {/* Late checkout modal — rendered outside max-w-sm to cover full screen */}
+      {showLateModal && (
+        <LateCheckoutModal
+          onConfirm={(reason, claimedTime) => {
+            setShowLateModal(false);
+            doCheckOut(reason, claimedTime);
+          }}
+          onCancel={() => setShowLateModal(false)}
+        />
+      )}
     </div>
   );
 }

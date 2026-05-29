@@ -30,25 +30,28 @@ import type { UserRole } from '@hospital-hr/shared';
  */
 export const PERMISSIONS = {
   // ── Any authenticated user ───────────────────────────────────────────────
-  AUTHENTICATED:         ['super_admin', 'hr', 'manager', 'employee', 'part_time'],
+  AUTHENTICATED:         ['super_admin', 'admin', 'hr_branch', 'manager', 'employee', 'part_time'],
 
   // ── Manager, HR, Super Admin — admin UI zone ─────────────────────────────
-  ADMIN_ACCESS:          ['super_admin', 'hr', 'manager'],
-  SCHEDULES_VIEW:        ['super_admin', 'hr', 'manager'],
-  ATTENDANCE_VIEW:       ['super_admin', 'hr', 'manager'],
-  APPROVALS_VIEW:        ['super_admin', 'hr', 'manager'],
-  REPORTS_VIEW:          ['super_admin', 'hr', 'manager'],
-  EDIT_REQUESTS_VIEW:    ['super_admin', 'hr', 'manager'],
+  ADMIN_ACCESS:          ['super_admin', 'admin', 'hr_branch', 'manager'],
+  SCHEDULES_VIEW:        ['super_admin', 'admin', 'hr_branch', 'manager'],
+  ATTENDANCE_VIEW:       ['super_admin', 'admin', 'hr_branch', 'manager'],
+  APPROVALS_VIEW:        ['super_admin', 'admin', 'hr_branch', 'manager'],
+  REPORTS_VIEW:          ['super_admin', 'admin', 'hr_branch', 'manager'],
+  EDIT_REQUESTS_VIEW:    ['super_admin', 'admin', 'hr_branch', 'manager'],
+
+  // ── Leave approvals — manager and above ─────────────────────────────────
+  LEAVE_APPROVALS_VIEW:  ['super_admin', 'admin', 'hr_branch', 'manager'],
 
   // ── HR + Super Admin only ────────────────────────────────────────────────
-  EMPLOYEES_MANAGE:      ['super_admin', 'hr'],
-  DEPARTMENTS_MANAGE:    ['super_admin', 'hr'],
-  BRANCHES_MANAGE:       ['super_admin', 'hr'],
-  WORK_PATTERNS_MANAGE:  ['super_admin', 'hr'],
-  HOLIDAYS_MANAGE:       ['super_admin', 'hr'],
+  EMPLOYEES_MANAGE:      ['super_admin', 'admin', 'hr_branch'],
+  DEPARTMENTS_MANAGE:    ['super_admin', 'admin', 'hr_branch'],
+  WORK_PATTERNS_MANAGE:  ['super_admin', 'admin', 'hr_branch'],
+  HOLIDAYS_MANAGE:       ['super_admin', 'admin', 'hr_branch'],
 
-  // ── Super Admin only ─────────────────────────────────────────────────────
-  SETTINGS_MANAGE:       ['super_admin'],
+  // ── Admin + Super Admin only — cross-branch scope ────────────────────────
+  BRANCHES_MANAGE:       ['super_admin', 'admin'],
+  SETTINGS_MANAGE:       ['super_admin', 'admin', 'hr_branch'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

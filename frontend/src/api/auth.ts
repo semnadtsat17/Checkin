@@ -1,10 +1,23 @@
-import type { User } from '@hospital-hr/shared';
+import type { UserProfile } from '@hospital-hr/shared';
 import { apiFetch } from './client';
+
+export interface BranchSlim {
+  id:       string;
+  nameTh:   string;
+  nameEn:   string;
+  province: string | undefined;
+}
 
 export interface LoginResponse {
   token:              string;
-  profile:            User;
+  profile:            UserProfile;
+  branches:           BranchSlim[];
   mustChangePassword: boolean;
+}
+
+export interface SelectBranchResponse {
+  token:   string;
+  profile: UserProfile;
 }
 
 export const authApi = {
@@ -15,8 +28,19 @@ export const authApi = {
     });
   },
 
+  selectBranch(branchId: string) {
+    return apiFetch<SelectBranchResponse>('/api/auth/select-branch', {
+      method: 'POST',
+      body: JSON.stringify({ branchId }),
+    });
+  },
+
+  listBranches() {
+    return apiFetch<BranchSlim[]>('/api/auth/branches');
+  },
+
   me() {
-    return apiFetch<User>('/api/auth/me');
+    return apiFetch<UserProfile>('/api/auth/me');
   },
 
   changePassword(currentPassword: string, newPassword: string) {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * audit.router.ts
  *
  * REST endpoint for the audit log.
@@ -33,7 +33,7 @@ router.use(authenticate);
  */
 router.get(
   '/',
-  requireRole(['manager', 'hr', 'super_admin']),
+  requireRole(['super_admin', 'admin', 'hr_branch', 'manager']),
   (req: Request, res: Response, next: NextFunction) => {
     try {
       const q = req.query as Record<string, string | undefined>;

@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   WorkSchedule,
   ScheduleDay,
   ScheduleTimeOverride,
@@ -13,7 +13,7 @@ import type {
 import { JsonRepository } from '../../shared/repository/JsonRepository';
 import type { IRepository } from '../../shared/repository/IRepository';
 import { AppError } from '../../shared/middleware/errorHandler';
-import { hasPermission } from '../../core/permissions';
+import { hasPermission, hasHrAccess } from '../../core/permissions';
 import type { UserRecord } from '../employees/employee.service';
 import { assertNotSimpleMode } from '../attendance/guards/simpleMode.guard';
 
@@ -207,7 +207,7 @@ function verifyDeptAccess(
   actorRole: UserRole,
   targetUserId: string
 ): void {
-  if (hasPermission(actorRole, 'hr')) return;
+  if (hasHrAccess(actorRole)) return;
 
   const employee = employeeStore.findById(targetUserId);
   if (!employee) throw new AppError(404, 'Employee not found', 'NOT_FOUND');
@@ -292,7 +292,7 @@ export const scheduleService = {
     // Determine employee IDs in scope
     let scopedUserIds: Set<string> | null = null;
 
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       // Manager: restrict to employees in managed departments
       const deptIds = new Set(getManagedDeptIds(actorUserId));
 
@@ -327,7 +327,7 @@ export const scheduleService = {
       return true;
     };
 
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       // Manager: show drafts + published for periods not in draft
       const drafts    = draftScheduleStore.findAll(matchFn);
       const published = scheduleStore.findAll(matchFn);
@@ -617,7 +617,7 @@ export const scheduleService = {
     // Build scoped userId set
     let scopedUserIds: Set<string> | null = null;
 
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       const deptIds = new Set(getManagedDeptIds(actorUserId));
       if (filters.departmentId) {
         if (!deptIds.has(filters.departmentId)) {
@@ -1033,7 +1033,7 @@ export const scheduleService = {
     const dept = departmentStore.findById(departmentId);
     if (!dept) throw new AppError(404, 'Department not found', 'NOT_FOUND');
 
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       // Manager: verify department access
       const actor = employeeStore.findById(actorUserId);
       const managedDepts = actor?.managerDepartments ?? [];
@@ -1151,7 +1151,7 @@ export const scheduleService = {
       throw new AppError(400, 'month must be YYYY-MM', 'VALIDATION_ERROR');
     }
 
-    if (!hasPermission(actorRole, 'hr')) {
+    if (!hasHrAccess(actorRole)) {
       const actor = employeeStore.findById(actorUserId);
       const managedDepts = actor?.managerDepartments ?? [];
       if (!managedDepts.includes(departmentId)) {

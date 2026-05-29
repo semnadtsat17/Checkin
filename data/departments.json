@@ -1,0 +1,59 @@
+[
+  {
+    "id": "dept-001",
+    "nameTh": "ฝ่ายทรัพยากรบุคคล",
+    "nameEn": "Human Resources",
+    "branchId": "branch-001",
+    "managerId": "emp-003",
+    "isActive": true,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-05-06T20:25:15.924Z",
+    "workSchedulePatternId": "48c76b0c-0fd3-4182-8436-137cfe3c6b2a",
+    "requireHrApproval": true,
+    "holidayTypeId": "65886d55-725d-4592-bdbb-94959b46bfc3"
+  },
+  {
+    "id": "dept-002",
+    "nameTh": "ฝ่ายพยาบาล",
+    "nameEn": "Nursing",
+    "branchId": "branch-001",
+    "managerId": "emp-003",
+    "isActive": true,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-03-15T15:28:08.980Z",
+    "workSchedulePatternId": "787b6f8b-902a-400b-bb14-72cd9d9b7c00"
+  },
+  {
+    "nameTh": "พนักงานออฟฟิศ",
+    "nameEn": "Officer",
+    "branchId": "branch-001",
+    "workSchedulePatternId": "787b6f8b-902a-400b-bb14-72cd9d9b7c00",
+    "isActive": true,
+    "id": "26d5c653-944c-4171-ab37-17652311e07f",
+    "createdAt": "2026-03-15T13:53:27.819Z",
+    "updatedAt": "2026-03-23T09:15:57.878Z",
+    "requireHrApproval": false,
+    "holidayTypeId": "29298ae1-dd6b-43ca-b339-e3ee26f35e1c"
+  },
+  {
+    "nameTh": "ผู้บริหาร",
+    "nameEn": "C-Level",
+    "branchId": "branch-001",
+    "workSchedulePatternId": "afea95ff-5ca2-4496-a1dd-ddf89ac72f44",
+    "isActive": true,
+    "id": "d3ddcd89-f10c-4f8c-9773-538591f01872",
+    "createdAt": "2026-03-15T15:31:43.298Z",
+    "updatedAt": "2026-03-15T15:31:43.298Z"
+  },
+  {
+    "nameTh": "ทดสอบย้ายแผนก",
+    "nameEn": "",
+    "branchId": "branch-001",
+    "workSchedulePatternId": "76acf386-10b6-48e6-8244-5290f4e60707",
+    "requireHrApproval": false,
+    "isActive": true,
+    "id": "2757d44b-bf00-4d14-a8e5-981eeaf2160c",
+    "createdAt": "2026-03-16T11:41:36.457Z",
+    "updatedAt": "2026-03-16T11:41:36.457Z"
+  }
+]

@@ -6,6 +6,8 @@ import type { UserRecord } from '../employees/employee.service';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
+export type AdditionalWorkApprovalChain = 'manager_only' | 'hr_only' | 'manager_then_hr';
+
 export interface CreateDepartmentDto {
   nameTh: string;
   nameEn?: string;
@@ -14,6 +16,7 @@ export interface CreateDepartmentDto {
   workSchedulePatternId?: string;
   requireHrApproval?: boolean;
   holidayTypeId?: string | null;
+  additionalWorkApprovalChain?: AdditionalWorkApprovalChain;
 }
 
 export interface UpdateDepartmentDto {
@@ -25,6 +28,7 @@ export interface UpdateDepartmentDto {
   requireHrApproval?: boolean;
   isActive?: boolean;
   holidayTypeId?: string | null;
+  additionalWorkApprovalChain?: AdditionalWorkApprovalChain;
 }
 
 export interface DepartmentFilters {
@@ -106,6 +110,7 @@ export const departmentService = {
       workSchedulePatternId: dto.workSchedulePatternId,
       requireHrApproval: dto.requireHrApproval ?? false,
       holidayTypeId: dto.holidayTypeId ?? undefined,
+      additionalWorkApprovalChain: dto.additionalWorkApprovalChain ?? 'manager_only',
       isActive: true,
     } as Omit<Department, 'id' | 'createdAt' | 'updatedAt'>);
   },
@@ -154,6 +159,10 @@ export const departmentService = {
     // Allow clearing holidayTypeId with explicit null
     if ('holidayTypeId' in dto) {
       patch.holidayTypeId = dto.holidayTypeId ?? undefined;
+    }
+
+    if (dto.additionalWorkApprovalChain !== undefined) {
+      patch.additionalWorkApprovalChain = dto.additionalWorkApprovalChain;
     }
 
     const updated = store.updateById(id, patch) as Department;

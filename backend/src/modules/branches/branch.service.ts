@@ -12,6 +12,7 @@ const branchStore: IRepository<Branch> = new JsonRepository<Branch>('branches');
 export interface CreateBranchDto {
   nameTh:        string;
   nameEn:        string;
+  province?:     string;
   address?:      string;
   latitude?:     number;
   longitude?:    number;
@@ -21,6 +22,7 @@ export interface CreateBranchDto {
 export interface UpdateBranchDto {
   nameTh?:       string;
   nameEn?:       string;
+  province?:     string;
   address?:      string;
   latitude?:     number;
   longitude?:    number;
@@ -98,6 +100,7 @@ export const branchService = {
     return branchStore.create({
       nameTh:        dto.nameTh.trim(),
       nameEn:        dto.nameEn.trim(),
+      province:      dto.province?.trim(),
       address:       dto.address?.trim(),
       latitude:      dto.latitude,
       longitude:     dto.longitude,
@@ -131,6 +134,7 @@ export const branchService = {
     const updated = branchStore.updateById(id, {
       ...(dto.nameTh       !== undefined && { nameTh:       dto.nameTh.trim() }),
       ...(dto.nameEn       !== undefined && { nameEn:       dto.nameEn.trim() }),
+      ...(dto.province     !== undefined && { province:     dto.province.trim() }),
       ...(dto.address      !== undefined && { address:      dto.address.trim() }),
       ...(dto.latitude     !== undefined && { latitude:     dto.latitude }),
       ...(dto.longitude    !== undefined && { longitude:    dto.longitude }),

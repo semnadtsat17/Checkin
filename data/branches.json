@@ -1,0 +1,11 @@
+[
+  {
+    "id": "branch-001",
+    "nameTh": "สาขาหลัก",
+    "nameEn": "Main Branch",
+    "address": "123 ถนนสุขุมวิท กรุงเทพฯ",
+    "isActive": true,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  }
+]

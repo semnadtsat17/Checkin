@@ -13,7 +13,27 @@
       "Bash(npm install:*)",
       "Bash(node -e \"require\\('zod'\\); console.log\\('zod ok'\\)\")",
       "Bash(npx vitest:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(cmd.exe /c \"node_modules\\\\.bin\\\\tsc --noEmit 2>&1\")",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Fern\\\\\\\\Github\\\\\\\\Checkin\\\\\\\\frontend && node_modules\\\\\\\\.bin\\\\\\\\tsc --noEmit 2>&1\")",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Fern\\\\\\\\Github\\\\\\\\Checkin\\\\\\\\backend && node_modules\\\\\\\\.bin\\\\\\\\tsc --noEmit 2>&1\")",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Fern\\\\\\\\Github\\\\\\\\Checkin\\\\\\\\backend && node_modules\\\\\\\\.bin\\\\\\\\vitest run 2>&1\")",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Fern\\\\\\\\Github\\\\\\\\Checkin\\\\\\\\backend && node_modules\\\\\\\\.bin\\\\\\\\vitest run --reporter=verbose 2>&1\")",
+      "Bash(powershell -Command \"Set-Location 'C:\\\\Fern\\\\Github\\\\Checkin\\\\backend'; & 'node_modules\\\\.bin\\\\vitest' run --reporter verbose 2>&1\")",
+      "Bash(powershell -Command \"Set-Location 'C:\\\\Fern\\\\Github\\\\Checkin\\\\backend'; node 'node_modules\\\\vitest\\\\vitest.mjs' run 2>&1\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Fern\\\\Github\\\\Checkin\\\\backend\\\\node_modules' -ErrorAction SilentlyContinue | Select-Object -First 5 Name\")",
+      "Bash(node_modules/.bin/vitest run *)",
+      "Bash(node -e \"const bcrypt = require\\('bcryptjs'\\); bcrypt.hash\\('Admin1234', 10\\).then\\(h => console.log\\(h\\)\\)\")",
+      "Bash(node -e \"const bcrypt = require\\('bcryptjs'\\); bcrypt.hash\\('123456', 10\\).then\\(h => console.log\\(h\\)\\)\")",
+      "Bash(curl -s -o - -w \"\\\\nHTTP_STATUS:%{http_code}\" http://localhost:3000/api/health)",
+      "Bash(curl -s -o - -w \"\\\\nHTTP_STATUS:%{http_code}\" http://localhost:5173/api/health)",
+      "Bash(curl -s -o - -w \"\\\\nHTTP_STATUS:%{http_code}\" http://localhost:3001/api/health)",
+      "Bash(node -e ' *)",
+      "Bash(xargs grep *)",
+      "PowerShell(\\(Get-Content \"c:\\\\Fern\\\\Github\\\\Checkin\\\\backend\\\\src\\\\modules\\\\schedule-approvals\\\\schedule-approval.service.ts\"\\) -replace 'actorRole: string\\\\\\)', 'actorRole: UserRole\\)' | Set-Content \"c:\\\\Fern\\\\Github\\\\Checkin\\\\backend\\\\src\\\\modules\\\\schedule-approvals\\\\schedule-approval.service.ts\" -Encoding utf8)",
+      "PowerShell(\\(Get-Content \"c:\\\\Fern\\\\Github\\\\Checkin\\\\backend\\\\src\\\\modules\\\\employees\\\\employee.service.ts\"\\) -replace '\\(\\\\\\): User \\\\{\\)', '\\): UserProfile {' | Set-Content \"c:\\\\Fern\\\\Github\\\\Checkin\\\\backend\\\\src\\\\modules\\\\employees\\\\employee.service.ts\" -Encoding utf8)",
+      "PowerShell(\\(Get-Content \"c:\\\\Fern\\\\Github\\\\Checkin\\\\frontend\\\\src\\\\api\\\\employees.ts\"\\) -replace '\\\\bUser\\\\b', 'UserProfile' | Set-Content \"c:\\\\Fern\\\\Github\\\\Checkin\\\\frontend\\\\src\\\\api\\\\employees.ts\" -Encoding utf8)"
     ]
   }
 }
